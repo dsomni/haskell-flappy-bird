@@ -10,7 +10,6 @@ description:    Please see the README on GitHub at <https://github.com/dsomni/ha
 homepage:       https://github.com/dsomni/haskell-flappy-bird#readme
 bug-reports:    https://github.com/dsomni/haskell-flappy-bird/issues
 license:        BSD3
-license-file:   LICENSE
 build-type:     Custom
 extra-source-files:
     README.md
@@ -27,11 +26,14 @@ custom-setup
 
 library
   exposed-modules:
+      Game.Game
       Project
   other-modules:
       Paths_haskell_flappy_bird
   hs-source-dirs:
       src
+  default-extensions:
+      OverloadedStrings
   ghc-options: -Wall -fno-warn-type-defaults
   build-depends:
       base >=4.7 && <5
@@ -45,6 +47,8 @@ executable haskell-flappy-bird
       Paths_haskell_flappy_bird
   hs-source-dirs:
       app
+  default-extensions:
+      OverloadedStrings
   ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -58,6 +62,8 @@ test-suite doctests
   main-is: doctests.hs
   hs-source-dirs:
       test
+  default-extensions:
+      OverloadedStrings
   ghc-options: -Wall -fno-warn-type-defaults
   build-depends:
       Glob
@@ -77,6 +83,8 @@ test-suite spec
       Paths_haskell_flappy_bird
   hs-source-dirs:
       test
+  default-extensions:
+      OverloadedStrings
   ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hspec-discover:hspec-discover

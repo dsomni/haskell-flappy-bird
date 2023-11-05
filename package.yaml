@@ -29,6 +29,9 @@ dependencies:
 - codeworld-api
 - text
 
+default-extensions:
+- OverloadedStrings
+
 library:
   source-dirs: src
 
