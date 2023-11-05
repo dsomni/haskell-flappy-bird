@@ -1,0 +1,12 @@
+# docker
+.dockerignore
+Dockerfile
+
+# git
+.git/
+.gitignore
+
+# stack
+.stack-work/
+
+.vscode/
