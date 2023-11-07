@@ -3,6 +3,7 @@ module Game.Game where
 import CodeWorld
 import Data.List
 import System.Random
+import qualified Data.Text as T
 
 run :: IO ()
 run = newRandomGates
@@ -40,7 +41,7 @@ sampleGates3 gen =
     (g1', g2) = split gen
     (g1, g3) = split g1'
     widths = randomRs (2.0, 3.0) g1
-    heights = randomRs (3.0, 10.0) g3
+    heights = randomRs (5.0, 10.0) g3
     ys = randomRs (-3.0, 3.0) g2
     xs = [startGates, startGates+gatesSpacing ..]
 
@@ -50,6 +51,7 @@ data World = World
     offset :: Double,
     speed :: Double,
     player :: Player,
+    score:: Int,
     failed :: Bool
   }
 
@@ -59,12 +61,20 @@ drawGates = pictures . map drawGate
 drawPlayer :: Player -> Picture
 drawPlayer Player {y = y', hitBoxSize= r} = translated 0 y' (rectangle r r <> lettering "\x1F6F8")
 
+drawScore:: Int -> Picture
+drawScore score = translated (-5) (-5) (lettering (T.pack (show score)))
+
 
 onScreen :: Double -> Gate -> Bool
 onScreen globalOffset Gate {offsetX = offsetX'} = (offsetX' + globalOffset) < 50
 
+playerShift :: Double
+playerShift = -5
+
 drawWorld :: World -> Picture
-drawWorld World {gates = gates', offset = offset', player = player'} = translated (-5) 0 (drawPlayer player' <> translated offset' 0 (drawGates (takeWhile (onScreen offset') gates')))
+drawWorld World {gates = gates', offset = offset', player = player', score=score'} =drawScore score' <>
+  translated playerShift 0 (drawPlayer player'
+  <> translated offset' 0 (drawGates (takeWhile (onScreen offset') gates')))
 
 drawGate :: Gate -> Picture
 drawGate (Gate width offsetX offsetY height) = top <> bottom
@@ -83,7 +93,7 @@ worldSpeedIncrease = 0.001
 newRandomGates :: IO ()
 newRandomGates = do
   gen <- newStdGen
-  let sampleWorld = World (-2) (sampleGates3 gen) 0 1 (Player 0 0 False 1) False
+  let sampleWorld = World (-2) (sampleGates3 gen) 0 1 (Player 0 0 False 1) 0 False
   activityOf sampleWorld handleEvent drawWorld
 
 handleEvent :: Event -> World -> World
@@ -98,12 +108,20 @@ offScreen globalOffset Gate {offsetX = offsetX'} = (offsetX' + globalOffset) < -
 
 updateWorld :: Double -> World -> World
 updateWorld _ world@World {failed = True} = world
-updateWorld dt world@World {time = time', offset = offset', player = player', gates = gates', speed=speed'}
+updateWorld dt world@World {time = time', offset = offset', player = player', gates = gates', speed=speed', score=score'}
   = newWorld
   where
     newPlayer = updatePlayer dt player'
-    newWorld' = world {time = time' + dt, offset = offset' - dt*speed', player = newPlayer, speed= max (speed'+ worldSpeedIncrease) maxWorldSpeed}
-    newWorld = newWorld' {failed = isFailed newWorld', gates = dropWhile (offScreen offset') gates'}
+    newOffset = offset' - dt*speed'
+    newWorld' = world {time = time' + dt, offset = newOffset, player = newPlayer, speed= max (speed'+ worldSpeedIncrease) maxWorldSpeed}
+    screenGates = takeWhile (onScreen offset') gates' -- TODO: consider only gates with offset <= player's position
+    scoreImprovement = calculateScoreImprovement offset' newOffset screenGates
+    newWorld = newWorld' {failed = isFailed newWorld', gates = dropWhile (offScreen offset') gates', score=score'+scoreImprovement}
+
+calculateScoreImprovement :: Double -> Double -> [Gate] -> Int
+calculateScoreImprovement oldOffset newOffset gates =
+  length (filter (\Gate {offsetX=offset'} -> oldOffset + offset' > 0 && offset'+ newOffset <= 0) gates)
+
 
 isFailed :: World -> Bool
 isFailed world@World {gates = gates', offset=offset'} = any (isCollided world) (takeWhile (onScreen offset') gates')
