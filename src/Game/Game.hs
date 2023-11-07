@@ -26,7 +26,7 @@ startGates = 10.0
 
 -- Spacing between neighbor gates
 gatesSpacing:: Double
-gatesSpacing = 5.0
+gatesSpacing = 6.0
 
 sampleGates3 :: StdGen -> [Gate]
 sampleGates3 gen =
@@ -74,6 +74,12 @@ drawGate (Gate width offsetX offsetY height) = top <> bottom
     bottom = colored green (translated offsetX (offsetY-windowHeight/2-height/2) (solidRectangle width windowHeight))
 
 
+maxWorldSpeed ::Double
+maxWorldSpeed = 3
+
+worldSpeedIncrease ::Double
+worldSpeedIncrease = 0.001
+
 newRandomGates :: IO ()
 newRandomGates = do
   gen <- newStdGen
@@ -92,11 +98,11 @@ offScreen globalOffset Gate {offsetX = offsetX'} = (offsetX' + globalOffset) < -
 
 updateWorld :: Double -> World -> World
 updateWorld _ world@World {failed = True} = world
-updateWorld dt world@World {time = time', offset = offset', player = player', gates = gates'}
+updateWorld dt world@World {time = time', offset = offset', player = player', gates = gates', speed=speed'}
   = newWorld
   where
     newPlayer = updatePlayer dt player'
-    newWorld'@World {speed=speed'} = world {time = time' + dt, offset = offset' - dt*speed', player = newPlayer}
+    newWorld' = world {time = time' + dt, offset = offset' - dt*speed', player = newPlayer, speed= max (speed'+ worldSpeedIncrease) maxWorldSpeed}
     newWorld = newWorld' {failed = isFailed newWorld', gates = dropWhile (offScreen offset') gates'}
 
 isFailed :: World -> Bool
