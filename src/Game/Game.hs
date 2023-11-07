@@ -57,7 +57,7 @@ drawGates :: [Gate] -> Picture
 drawGates = pictures . map drawGate
 
 drawPlayer :: Player -> Picture
-drawPlayer Player {y = y'} = translated 0 y' (circle 0.5 <> lettering "\x1F6F8")
+drawPlayer Player {y = y', hitBoxSize= r} = translated 0 y' (rectangle r r <> lettering "\x1F6F8")
 
 
 onScreen :: Double -> Gate -> Bool
@@ -75,7 +75,7 @@ drawGate (Gate width offsetX offsetY height) = translated offsetX offsetY (color
 newRandomGates :: IO ()
 newRandomGates = do
   gen <- newStdGen
-  let sampleWorld = World (-2) (sampleGates3 gen) 0 1 (Player 0 0 False) False
+  let sampleWorld = World (-2) (sampleGates3 gen) 0 1 (Player 0 0 False 1) False
   activityOf sampleWorld handleEvent drawWorld
 
 handleEvent :: Event -> World -> World
@@ -98,17 +98,22 @@ updateWorld dt world@World {time = time', offset = offset', player = player', ga
     newWorld = newWorld' {failed = isFailed newWorld', gates = dropWhile (offScreen offset') gates'}
 
 isFailed :: World -> Bool
-isFailed _ = False
--- isFailed world@World {gates = gates'} = any (isCollided world) (take 5 gates')
+-- isFailed _ = False
+isFailed world@World {gates = gates', offset=offset'} = any (isCollided world) (takeWhile (onScreen offset') gates')
+
+
+-- For better UX
+collisionEpsilon :: Double
+collisionEpsilon = 0.1
 
 isCollided :: World -> Gate -> Bool
-isCollided World {offset = worldOffset, player = Player {y = y'}} Gate {offsetX = offsetX', offsetY = offsetY', width = width', height = height'}
-  | abs y' > 10 = True
-  | ( y' >= (offsetY' + (height' / 2))
-        || y' <= (offsetY' - (height' / 2))
+isCollided World {offset = worldOffset, player = Player {y = y', hitBoxSize=r}} Gate {offsetX = offsetX', offsetY = offsetY', width = width', height = height'}
+  | abs y' > 10 = True -- TODO: create constant
+  | ( (y'+r) > ( offsetY' + (height' / 2) + collisionEpsilon)
+        || (y'-r) < (offsetY' - (height' / 2)- collisionEpsilon)
     )
-      && (-worldOffset) >= (offsetX' - width' / 2)
-      && (-worldOffset) <= (offsetX' + width' / 2) =
+      && (-worldOffset +r) > (offsetX' - width' / 2 + collisionEpsilon)
+      && (-worldOffset-r) < (offsetX' + width' / 2 - collisionEpsilon) =
       True
   | otherwise = False
 
@@ -125,5 +130,6 @@ data Player = Player
   {
     velocity :: Double,
     y :: Double,
-    pressedSpace :: Bool -- to prohibit player for holding SPACE
+    pressedSpace :: Bool, -- to prohibit player for holding SPACE
+    hitBoxSize :: Double
   }
