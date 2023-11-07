@@ -66,11 +66,13 @@ onScreen globalOffset Gate {offsetX = offsetX'} = (offsetX' + globalOffset) < 50
 drawWorld :: World -> Picture
 drawWorld World {gates = gates', offset = offset', player = player'} = translated (-5) 0 (drawPlayer player' <> translated offset' 0 (drawGates (takeWhile (onScreen offset') gates')))
 
-forceDrawGates :: [Gate] -> Picture
-forceDrawGates gates = pictures (map drawGate gates)
-
 drawGate :: Gate -> Picture
-drawGate (Gate width offsetX offsetY height) = translated offsetX offsetY (colored black (rectangle width height))
+drawGate (Gate width offsetX offsetY height) = top <> bottom
+  where
+    windowHeight = 30
+    top = colored green (translated offsetX (offsetY + windowHeight/2 + height/2) (solidRectangle width windowHeight))
+    bottom = colored green (translated offsetX (offsetY-windowHeight/2-height/2) (solidRectangle width windowHeight))
+
 
 newRandomGates :: IO ()
 newRandomGates = do
@@ -85,7 +87,7 @@ handleEvent (KeyRelease " ") world@World {player = player'} = updateWorld 0 (wor
 handleEvent _ world = world
 
 offScreen :: Double -> Gate -> Bool
--- TODO: CHeck why here is '-6' but not '0'
+-- TODO: Check why here is '-6' but not '0'
 offScreen globalOffset Gate {offsetX = offsetX'} = (offsetX' + globalOffset) < -6
 
 updateWorld :: Double -> World -> World
@@ -98,7 +100,6 @@ updateWorld dt world@World {time = time', offset = offset', player = player', ga
     newWorld = newWorld' {failed = isFailed newWorld', gates = dropWhile (offScreen offset') gates'}
 
 isFailed :: World -> Bool
--- isFailed _ = False
 isFailed world@World {gates = gates', offset=offset'} = any (isCollided world) (takeWhile (onScreen offset') gates')
 
 
@@ -124,7 +125,7 @@ updatePlayer
     player {velocity = newVelocity, y = newY}
     where
       newVelocity =  velocity' + dt * gravity
-      newY = max (y' + velocity'*dt) (-10)
+      newY = max (y' + velocity'*dt) (-12)
 
 data Player = Player
   {
