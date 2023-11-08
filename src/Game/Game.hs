@@ -47,7 +47,7 @@ sampleGates gen =
     ys = randomRs (-3.0, 3.0) g2
     xs = [startGates, startGates + gatesSpacing ..]
 
-data WorldState = Progress | Fail
+data WorldState = Progress | Fail | Idle
 
 data World = World
   { time :: Double,
@@ -83,13 +83,19 @@ playerShift = -5
 
 drawWorld :: World -> Picture
 drawWorld World {gates = gates', offset = offset', player = player', score = score', state = state'} =
-  drawScore score'
+  maybeDrawMenu state'
+    <> drawScore score'
     <> translated
       playerShift
       0
       ( drawPlayer player' state'
           <> translated offset' 0 (drawGates (takeWhile (onScreen offset') gates'))
       )
+  where
+    maybeDrawMenu :: WorldState -> Picture
+    maybeDrawMenu Progress = blank
+    maybeDrawMenu Fail = lettering "Press space to try again" <> colored gray (solidRectangle 10 5)
+    maybeDrawMenu Idle = lettering "Press space to start" <> colored gray (solidRectangle 10 5)
 
 drawGate :: Gate -> Picture
 drawGate (Gate width offsetX offsetY height) = top <> bottom
@@ -105,7 +111,7 @@ worldSpeedIncrease :: Double
 worldSpeedIncrease = 0.001
 
 generateWorld :: StdGen -> World
-generateWorld g = World (-2) (sampleGates gen) 0 1 (Player 0 0 1) 0 Progress gen False
+generateWorld g = World (-2) (sampleGates gen) 0 1 (Player 0 0 1) 0 Idle gen False
   where
     (gen, _) = split g
 
@@ -128,6 +134,11 @@ handleFailEvent _ world = world
 handleEvent :: Event -> World -> World
 handleEvent e world@World {state = Progress} = handleProgressEvent e world
 handleEvent e world@World {state = Fail} = handleFailEvent e world
+handleEvent e world@World {state = Idle} = handleIdleEvent e world
+
+handleIdleEvent :: Event -> World -> World
+handleIdleEvent (KeyPress " ") world = world {state = Progress}
+handleIdleEvent _ world = world
 
 offScreen :: Double -> Gate -> Bool
 -- TODO: Check why here is '-6' but not '0'
