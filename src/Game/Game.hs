@@ -4,6 +4,7 @@ import CodeWorld
 import Data.List
 import System.Random
 import qualified Data.Text as T
+import Data.Maybe
 
 run :: IO ()
 run = newRandomGates
@@ -29,8 +30,8 @@ startGates = 10.0
 gatesSpacing:: Double
 gatesSpacing = 6.0
 
-sampleGates3 :: StdGen -> [Gate]
-sampleGates3 gen =
+sampleGates :: StdGen -> [Gate]
+sampleGates gen =
   zipWith4
     Gate
     widths
@@ -54,7 +55,8 @@ data World = World
     speed :: Double,
     player :: Player,
     score:: Int,
-    state :: WorldState
+    state :: WorldState,
+    generator :: StdGen
   }
 
 drawGates :: [Gate] -> Picture
@@ -98,17 +100,35 @@ maxWorldSpeed = 3
 worldSpeedIncrease ::Double
 worldSpeedIncrease = 0.001
 
+
+generateWorld :: StdGen -> World
+generateWorld g = World (-2) (sampleGates gen) 0 1 (Player 0 0 False 1) 0 Progress gen
+  where
+    (gen , _ )  = split g
+
+
 newRandomGates :: IO ()
 newRandomGates = do
   gen <- newStdGen
-  let sampleWorld = World (-2) (sampleGates3 gen) 0 1 (Player 0 0 False 1) 0 Progress
-  activityOf sampleWorld handleEvent drawWorld
+  activityOf (generateWorld gen) handleEvent' drawWorld
 
 handleEvent :: Event -> World -> World
 handleEvent (TimePassing dt) world = updateWorld dt world
 handleEvent (KeyPress " ") world@World {player = player'@Player{pressedSpace=False}} = updateWorld 0 (world {player = player' {velocity = pushAcceleration, pressedSpace = True}})
 handleEvent (KeyRelease " ") world@World {player = player'} = updateWorld 0 (world {player = player' {pressedSpace = False}})
 handleEvent _ world = world
+
+
+handleFailEvent :: Event -> World -> World
+handleFailEvent (TimePassing dt) world = updateWorld dt world
+handleFailEvent (KeyPress " ") World{generator=g} = generateWorld g
+handleFailEvent _ world = world
+
+
+handleEvent' :: Event -> World -> World
+handleEvent' e world@World{state=Progress} = handleEvent e world
+handleEvent' e world@World{state=Fail} = handleFailEvent e world
+
 
 offScreen :: Double -> Gate -> Bool
 -- TODO: Check why here is '-6' but not '0'
