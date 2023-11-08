@@ -45,6 +45,8 @@ sampleGates3 gen =
     ys = randomRs (-3.0, 3.0) g2
     xs = [startGates, startGates+gatesSpacing ..]
 
+data WorldState =  Progress | Fail
+
 data World = World
   { time :: Double,
     gates :: [Gate],
@@ -52,14 +54,20 @@ data World = World
     speed :: Double,
     player :: Player,
     score:: Int,
-    failed :: Bool
+    state :: WorldState
   }
 
 drawGates :: [Gate] -> Picture
 drawGates = pictures . map drawGate
 
-drawPlayer :: Player -> Picture
-drawPlayer Player {y = y', hitBoxSize= r} = translated 0 y' (rectangle r r <> lettering "\x1F6F8")
+
+drawPlayer :: Player -> WorldState-> Picture
+drawPlayer Player {y = y', hitBoxSize= r} state = translated 0 y' playerPicture
+  where
+    playerPicture' = rectangle r r <> lettering "\x1F6F8"
+    playerPicture = case state of
+      Fail -> reflected 0 playerPicture'
+      _ -> playerPicture'
 
 drawScore:: Int -> Picture
 drawScore score = translated (-5) (-5) (lettering (T.pack (show score)))
@@ -72,8 +80,8 @@ playerShift :: Double
 playerShift = -5
 
 drawWorld :: World -> Picture
-drawWorld World {gates = gates', offset = offset', player = player', score=score'} =drawScore score' <>
-  translated playerShift 0 (drawPlayer player'
+drawWorld World {gates = gates', offset = offset', player = player', score=score', state=state'} =drawScore score' <>
+  translated playerShift 0 (drawPlayer  player' state'
   <> translated offset' 0 (drawGates (takeWhile (onScreen offset') gates')))
 
 drawGate :: Gate -> Picture
@@ -93,11 +101,11 @@ worldSpeedIncrease = 0.001
 newRandomGates :: IO ()
 newRandomGates = do
   gen <- newStdGen
-  let sampleWorld = World (-2) (sampleGates3 gen) 0 1 (Player 0 0 False 1) 0 False
+  let sampleWorld = World (-2) (sampleGates3 gen) 0 1 (Player 0 0 False 1) 0 Progress
   activityOf sampleWorld handleEvent drawWorld
 
 handleEvent :: Event -> World -> World
-handleEvent (TimePassing dt) world@World {time = time', offset = offset'} = updateWorld dt (world {time = time' + dt, offset = offset' - dt})
+handleEvent (TimePassing dt) world = updateWorld dt world
 handleEvent (KeyPress " ") world@World {player = player'@Player{pressedSpace=False}} = updateWorld 0 (world {player = player' {velocity = pushAcceleration, pressedSpace = True}})
 handleEvent (KeyRelease " ") world@World {player = player'} = updateWorld 0 (world {player = player' {pressedSpace = False}})
 handleEvent _ world = world
@@ -107,16 +115,24 @@ offScreen :: Double -> Gate -> Bool
 offScreen globalOffset Gate {offsetX = offsetX'} = (offsetX' + globalOffset) < -6
 
 updateWorld :: Double -> World -> World
-updateWorld _ world@World {failed = True} = world
+updateWorld dt world@World {state = Fail, player=player'} = newStaticWorld
+  where
+    newFailedPlayer = updatePlayer dt player'
+    newStaticWorld = world {speed=0, player= newFailedPlayer}
 updateWorld dt world@World {time = time', offset = offset', player = player', gates = gates', speed=speed', score=score'}
   = newWorld
   where
-    newPlayer = updatePlayer dt player'
     newOffset = offset' - dt*speed'
-    newWorld' = world {time = time' + dt, offset = newOffset, player = newPlayer, speed= max (speed'+ worldSpeedIncrease) maxWorldSpeed}
+    newWorld' = world {time = time' + dt, offset = newOffset,  speed= max (speed'+ worldSpeedIncrease) maxWorldSpeed}
     screenGates = takeWhile (onScreen offset') gates' -- TODO: consider only gates with offset <= player's position
     scoreImprovement = calculateScoreImprovement offset' newOffset screenGates
-    newWorld = newWorld' {failed = isFailed newWorld', gates = dropWhile (offScreen offset') gates', score=score'+scoreImprovement}
+    newState = if isFailed newWorld' then Fail else Progress
+    newPlayer' = case newState of
+      Fail -> player' {velocity = pushAcceleration/2}
+      _ -> player'
+    newPlayer = updatePlayer dt newPlayer'
+
+    newWorld = newWorld' {state = newState, gates = dropWhile (offScreen offset') gates', score=score'+scoreImprovement, player=newPlayer}
 
 calculateScoreImprovement :: Double -> Double -> [Gate] -> Int
 calculateScoreImprovement oldOffset newOffset gates =
