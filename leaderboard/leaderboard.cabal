@@ -1,0 +1,84 @@
+cabal-version:       2.2
+
+name:                leaderboard
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/leaderboard#readme
+license:             BSD-3-Clause
+license-file:        LICENSE
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2023 Author name here
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+                     CHANGELOG.md
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Example
+  build-depends:       base >= 4.7 && < 5
+                     , aeson
+                     , scotty
+                     , wai
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+
+executable leaderboard-exe
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  build-depends:       base
+                     , leaderboard
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+                       -O2
+                       -threaded
+                       -rtsopts
+                       -with-rtsopts=-N
+
+test-suite leaderboard-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , leaderboard
+                     , hspec
+                     , hspec-wai
+                     , hspec-wai-json
+                     , http-types
+                     , aeson
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints
+                       -O2
+                       -threaded
+                       -rtsopts
+                       -with-rtsopts=-N
+
+source-repository head
+  type:     git
+  location: https://github.com/githubuser/leaderboard
