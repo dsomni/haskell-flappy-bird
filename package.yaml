@@ -33,6 +33,7 @@ dependencies:
 default-extensions:
 - OverloadedStrings
 - ImportQualifiedPost
+- RecordWildCards
 
 library:
   source-dirs: src

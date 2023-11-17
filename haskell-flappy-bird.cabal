@@ -35,6 +35,7 @@ library
   default-extensions:
       OverloadedStrings
       ImportQualifiedPost
+      RecordWildCards
   ghc-options: -Wall -fno-warn-type-defaults
   build-depends:
       base >=4.7 && <5
@@ -52,6 +53,7 @@ executable haskell-flappy-bird
   default-extensions:
       OverloadedStrings
       ImportQualifiedPost
+      RecordWildCards
   ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -69,6 +71,7 @@ test-suite doctests
   default-extensions:
       OverloadedStrings
       ImportQualifiedPost
+      RecordWildCards
   ghc-options: -Wall -fno-warn-type-defaults
   build-depends:
       Glob
@@ -92,6 +95,7 @@ test-suite spec
   default-extensions:
       OverloadedStrings
       ImportQualifiedPost
+      RecordWildCards
   ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       hspec-discover:hspec-discover
