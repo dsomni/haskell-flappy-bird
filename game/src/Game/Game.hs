@@ -6,7 +6,7 @@ import Data.Text qualified as T
 import System.Random
 
 run :: IO ()
-run = newRandomGates
+run = newGame
 
 data Gate = Gate
   { width :: Double,
@@ -15,6 +15,91 @@ data Gate = Gate
     height :: Double
   }
   deriving (Show)
+
+
+data SlowMotionBoost= SlowMotionBoost
+  {
+    radius :: Double,
+    offsetX_ :: Double,
+    offsetY_ :: Double,
+    duration :: Double,
+    speedCoefficient:: Double,
+    hidden :: Bool
+  }
+  deriving (Show)
+
+type Boost = SlowMotionBoost
+
+
+screenWidth :: Double
+screenWidth = 10
+
+screenHeight :: Double
+screenHeight = 10
+
+
+getSpawnFieldOutside :: Double ->Gate -> Gate -> (Double, Double, Double, Double)
+getSpawnFieldOutside shift Gate {offsetX = x1, width=w1}
+  Gate {offsetX = x2, width=w2} = (startX, endX, startY, endY)
+    where
+      startX = x1+w1/2 + shift
+      endX = x2-w2/2 - shift
+      startY = -(screenHeight/2) + shift
+      endY = (screenHeight/2) - shift
+
+getSpawnFieldInside :: Double ->Gate -> Gate -> (Double, Double, Double, Double)
+getSpawnFieldInside shift Gate {offsetX = x, offsetY = y, width=w, height=h}
+  _ = (startX, endX, startY, endY)
+    where
+      startX = x-w/2 + shift
+      endX = x+w/2 - shift
+      startY = y-h/2 + shift
+      endY = y+h/2  - shift
+
+getSpawnField :: Double -> StdGen->  Gate -> Gate -> (Double, Double, Double, Double)
+getSpawnField shift gen = getPositions randomValue shift
+    where
+      insideProbability :: Double
+      insideProbability = 0.3
+      (randomValue,_) = randomR (0.0, 1.0) gen
+      getPositions v
+        | v < insideProbability = getSpawnFieldInside
+        | otherwise = getSpawnFieldOutside
+
+
+generatePosition :: StdGen->(Double, Double, Double, Double) -> (Double,Double)
+generatePosition gen (startX, endX, startY, endY) = (x, y)
+  where
+    (x, _) = randomR (startX, endX) gen
+    (y, _) = randomR (startY, endY) gen
+
+
+randomGens :: StdGen -> [StdGen]
+randomGens = unfoldr (Just . split)
+
+sampleBoosts :: StdGen -> [Gate] -> [Boost]
+sampleBoosts gen gates = boosts
+  where
+    radius = 0.25
+    generators = randomGens gen
+    spawnFields = zipWith3 (getSpawnField radius) generators gates (drop 1 gates)
+    (xs, ys) = unzip (zipWith generatePosition generators spawnFields)
+
+    occurrenceProbability :: Double
+    occurrenceProbability = 0.4
+
+    hidden :: [Bool]
+    hidden = map ((>occurrenceProbability) . fst . randomR (0,1)) generators
+
+    boosts = zipWith6
+      SlowMotionBoost
+      (repeat radius)
+      xs
+      ys
+      (repeat 10)
+      (repeat 0.5)
+      hidden
+
 
 gravity :: Double
 gravity = -16
@@ -46,11 +131,13 @@ sampleGates gen =
     ys = randomRs (-3.0, 3.0) g2
     xs = [startGates, startGates + gatesSpacing ..]
 
+
 data WorldState = Progress | Fail | Idle
 
 data World = World
   { time :: Double,
     gates :: [Gate],
+    boosts :: [Boost],
     offset :: Double,
     speed :: Double,
     player :: Player,
@@ -62,6 +149,9 @@ data World = World
 
 drawGates :: [Gate] -> Picture
 drawGates = pictures . map drawGate
+
+drawBoosts :: [Boost] -> Picture
+drawBoosts = pictures . map drawBoost . filter (\SlowMotionBoost{hidden = hidden} -> not hidden)
 
 drawPlayer :: Player -> WorldState -> Picture
 drawPlayer Player {y = y, hitBoxSize = r} state = translated 0 y maybeDeadPlayerPicture
@@ -77,6 +167,9 @@ drawScore score = translated (-5) (-5) (lettering (T.pack (show score)))
 onScreen :: Double -> Gate -> Bool
 onScreen globalOffset Gate {offsetX = offsetX} = (offsetX + globalOffset) < 50
 
+onScreenBoost :: Double -> Boost -> Bool
+onScreenBoost globalOffset SlowMotionBoost{offsetX_ = offsetX} = (offsetX + globalOffset) < 50
+
 playerShift :: Double
 playerShift = -5
 
@@ -88,7 +181,8 @@ drawWorld World {..} =
       playerShift
       0
       ( drawPlayer player state
-          <> translated offset 0 (drawGates (takeWhile (onScreen offset) gates))
+      <> translated offset 0 (drawGates (takeWhile (onScreen offset) gates))
+      <> translated offset 0 (drawBoosts (takeWhile (onScreenBoost offset) boosts))
       )
   where
     maybeDrawMenu :: WorldState -> Picture
@@ -103,6 +197,10 @@ drawGate (Gate width offsetX offsetY height) = top <> bottom
     top = colored green (translated offsetX (offsetY + windowHeight / 2 + height / 2) (solidRectangle width windowHeight))
     bottom = colored green (translated offsetX (offsetY - windowHeight / 2 - height / 2) (solidRectangle width windowHeight))
 
+drawBoost :: Boost -> Picture
+drawBoost SlowMotionBoost{radius=r,offsetX_=x, offsetY_=y} =
+  colored red (translated x y (solidCircle r))
+
 maxWorldSpeed :: Double
 maxWorldSpeed = 3
 
@@ -110,12 +208,14 @@ worldSpeedIncrease :: Double
 worldSpeedIncrease = 0.001
 
 generateWorld :: StdGen -> World
-generateWorld g = World (-2) (sampleGates gen) 0 1 (Player 0 0 1) 0 Idle gen False
+generateWorld g = World (-2) gates boosts 0 1 (Player 0 0 1) 0 Idle gen False
   where
     (gen, _) = split g
+    gates = sampleGates gen
+    boosts = sampleBoosts gen gates
 
-newRandomGates :: IO ()
-newRandomGates = do
+newGame :: IO ()
+newGame = do
   gen <- newStdGen
   activityOf (generateWorld gen) handleEvent drawWorld
 
@@ -147,8 +247,10 @@ handleIdleEvent (KeyPress " ") world = world {state = Progress}
 handleIdleEvent _ world = world
 
 offScreen :: Double -> Gate -> Bool
--- TODO: Check why here is '-6' but not '0'
 offScreen globalOffset Gate {offsetX = offsetX} = (offsetX + globalOffset) < -6
+
+offScreenBoost :: Double -> Boost -> Bool
+offScreenBoost globalOffset SlowMotionBoost {offsetX_ = offsetX} = (offsetX + globalOffset) < -6
 
 updateWorld :: Double -> World -> World
 updateWorld dt world@World {state = Fail, player = player} = newStaticWorld
@@ -171,7 +273,8 @@ updateWorld dt world@World {..} =
             _ -> player
         )
 
-    newWorldWithPlayer = newWorld {state = newState, gates = dropWhile (offScreen offset) gates, score = score + scoreImprovement, player = newPlayer}
+    newWorldWithPlayer = newWorld {state = newState, gates = dropWhile (offScreen offset) gates,
+    boosts = dropWhile (offScreenBoost offset) boosts, score = score + scoreImprovement, player = newPlayer}
 
 calculateScoreImprovement :: Double -> Double -> [Gate] -> Int
 calculateScoreImprovement oldOffset newOffset gates =
