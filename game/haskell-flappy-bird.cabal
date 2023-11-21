@@ -1,6 +1,6 @@
 cabal-version: 1.24
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -26,7 +26,11 @@ custom-setup
 
 library
   exposed-modules:
+      Game.Constants
+      Game.Data
+      Game.Draw
       Game.Game
+      Game.Utils
       Project
   other-modules:
       Paths_haskell_flappy_bird

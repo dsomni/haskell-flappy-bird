@@ -2,45 +2,20 @@ module Game.Game where
 
 import CodeWorld
 import Data.List
-import Data.Text qualified as T
 import System.Random
+import Game.Constants
+import Game.Data
+import Game.Draw
+import Game.Utils
 
 run :: IO ()
 run = newGame
 
-data Gate = Gate
-  { width :: Double,
-    offsetX :: Double,
-    offsetY :: Double,
-    height :: Double
-  }
-  deriving (Show)
-
-
-data SlowMotionBoost= SlowMotionBoost
-  {
-    radius :: Double,
-    offsetX_ :: Double,
-    offsetY_ :: Double,
-    duration :: Double,
-    speedCoefficient:: Double,
-    hidden :: Bool
-  }
-  deriving (Show)
-
-type Boost = SlowMotionBoost
-
-
-screenWidth :: Double
-screenWidth = 10
-
-screenHeight :: Double
-screenHeight = 10
 
 
 getSpawnFieldOutside :: Double ->Gate -> Gate -> (Double, Double, Double, Double)
-getSpawnFieldOutside shift Gate {offsetX = x1, width=w1}
-  Gate {offsetX = x2, width=w2} = (startX, endX, startY, endY)
+getSpawnFieldOutside shift Gate {gateOffsetX = x1, gateWidth=w1}
+  Gate {gateOffsetX = x2, gateWidth=w2} = (startX, endX, startY, endY)
     where
       startX = x1+w1/2 + shift
       endX = x2-w2/2 - shift
@@ -48,7 +23,7 @@ getSpawnFieldOutside shift Gate {offsetX = x1, width=w1}
       endY = (screenHeight/2) - shift
 
 getSpawnFieldInside :: Double ->Gate -> Gate -> (Double, Double, Double, Double)
-getSpawnFieldInside shift Gate {offsetX = x, offsetY = y, width=w, height=h}
+getSpawnFieldInside shift Gate {gateOffsetX = x, gateOffsetY = y, gateWidth=w, gateHeight=h}
   _ = (startX, endX, startY, endY)
     where
       startX = x-w/2 + shift
@@ -92,7 +67,7 @@ sampleBoosts gen gates = boosts
     hidden = map ((>occurrenceProbability) . fst . randomR (0,1)) generators
 
     boosts = zipWith6
-      SlowMotionBoost
+      SlowMotion
       (repeat radius)
       xs
       ys
@@ -100,20 +75,6 @@ sampleBoosts gen gates = boosts
       (repeat 0.5)
       hidden
 
-
-gravity :: Double
-gravity = -16
-
-pushAcceleration :: Double
-pushAcceleration = 7
-
--- Position from where start building gates
-startGates :: Double
-startGates = 10.0
-
--- Spacing between neighbor gates
-gatesSpacing :: Double
-gatesSpacing = 6.0
 
 sampleGates :: StdGen -> [Gate]
 sampleGates gen =
@@ -129,86 +90,10 @@ sampleGates gen =
     widths = randomRs (2.0, 3.0) g1
     heights = randomRs (5.0, 10.0) g3
     ys = randomRs (-3.0, 3.0) g2
-    xs = [startGates, startGates + gatesSpacing ..]
+    xs = [gatesShift, gatesShift + gatesSpacing ..]
 
-
-data WorldState = Progress | Fail | Idle
-
-data World = World
-  { time :: Double,
-    gates :: [Gate],
-    boosts :: [Boost],
-    offset :: Double,
-    speed :: Double,
-    player :: Player,
-    score :: Int,
-    state :: WorldState,
-    generator :: StdGen,
-    spacePressed :: Bool
-  }
-
-drawGates :: [Gate] -> Picture
-drawGates = pictures . map drawGate
-
-drawBoosts :: [Boost] -> Picture
-drawBoosts = pictures . map drawBoost . filter (\SlowMotionBoost{hidden = hidden} -> not hidden)
-
-drawPlayer :: Player -> WorldState -> Picture
-drawPlayer Player {y = y, hitBoxSize = r} state = translated 0 y maybeDeadPlayerPicture
-  where
-    playerPicture = rectangle r r <> lettering "\x1F6F8"
-    maybeDeadPlayerPicture = case state of
-      Fail -> reflected 0 playerPicture
-      _ -> playerPicture
-
-drawScore :: Int -> Picture
-drawScore score = translated (-5) (-5) (lettering (T.pack (show score)))
-
-onScreen :: Double -> Gate -> Bool
-onScreen globalOffset Gate {offsetX = offsetX} = (offsetX + globalOffset) < 50
-
-onScreenBoost :: Double -> Boost -> Bool
-onScreenBoost globalOffset SlowMotionBoost{offsetX_ = offsetX} = (offsetX + globalOffset) < 50
-
-playerShift :: Double
-playerShift = -5
-
-drawWorld :: World -> Picture
-drawWorld World {..} =
-  maybeDrawMenu state
-    <> drawScore score
-    <> translated
-      playerShift
-      0
-      ( drawPlayer player state
-      <> translated offset 0 (drawGates (takeWhile (onScreen offset) gates))
-      <> translated offset 0 (drawBoosts (takeWhile (onScreenBoost offset) boosts))
-      )
-  where
-    maybeDrawMenu :: WorldState -> Picture
-    maybeDrawMenu Progress = blank
-    maybeDrawMenu Fail = lettering "Press space to try again" <> colored gray (solidRectangle 10 5)
-    maybeDrawMenu Idle = lettering "Press space to start" <> colored gray (solidRectangle 10 5)
-
-drawGate :: Gate -> Picture
-drawGate (Gate width offsetX offsetY height) = top <> bottom
-  where
-    windowHeight = 30
-    top = colored green (translated offsetX (offsetY + windowHeight / 2 + height / 2) (solidRectangle width windowHeight))
-    bottom = colored green (translated offsetX (offsetY - windowHeight / 2 - height / 2) (solidRectangle width windowHeight))
-
-drawBoost :: Boost -> Picture
-drawBoost SlowMotionBoost{radius=r,offsetX_=x, offsetY_=y} =
-  colored red (translated x y (solidCircle r))
-
-maxWorldSpeed :: Double
-maxWorldSpeed = 3
-
-worldSpeedIncrease :: Double
-worldSpeedIncrease = 0.001
-
-generateWorld :: StdGen -> World
-generateWorld g = World (-2) gates boosts 0 1 (Player 0 0 1) 0 Idle gen False
+generateWorld :: WorldState -> StdGen -> World
+generateWorld ws g = World (-2) gates boosts 0 1 (Player 0 0 1) 0 ws gen False
   where
     (gen, _) = split g
     gates = sampleGates gen
@@ -217,7 +102,7 @@ generateWorld g = World (-2) gates boosts 0 1 (Player 0 0 1) 0 Idle gen False
 newGame :: IO ()
 newGame = do
   gen <- newStdGen
-  activityOf (generateWorld gen) handleEvent drawWorld
+  activityOf (generateWorld Idle gen) handleEvent drawWorld
 
 handleEvent :: Event -> World -> World
 handleEvent e world@World {state = Progress} = handleProgressEvent e world
@@ -239,18 +124,14 @@ handleProgressEvent _ world = world
 
 handleFailEvent :: Event -> World -> World
 handleFailEvent (TimePassing dt) world = updateWorld dt world
-handleFailEvent (KeyPress " ") World {generator = g} = generateWorld g
+handleFailEvent (KeyPress " ") World {generator = g} = generateWorld Progress g
 handleFailEvent _ world = world
 
 handleIdleEvent :: Event -> World -> World
 handleIdleEvent (KeyPress " ") world = world {state = Progress}
 handleIdleEvent _ world = world
 
-offScreen :: Double -> Gate -> Bool
-offScreen globalOffset Gate {offsetX = offsetX} = (offsetX + globalOffset) < -6
 
-offScreenBoost :: Double -> Boost -> Bool
-offScreenBoost globalOffset SlowMotionBoost {offsetX_ = offsetX} = (offsetX + globalOffset) < -6
 
 updateWorld :: Double -> World -> World
 updateWorld dt world@World {state = Fail, player = player} = newStaticWorld
@@ -274,22 +155,20 @@ updateWorld dt world@World {..} =
         )
 
     newWorldWithPlayer = newWorld {state = newState, gates = dropWhile (offScreen offset) gates,
-    boosts = dropWhile (offScreenBoost offset) boosts, score = score + scoreImprovement, player = newPlayer}
+    boosts = dropWhile (offScreen offset) boosts, score = score + scoreImprovement, player = newPlayer}
 
 calculateScoreImprovement :: Double -> Double -> [Gate] -> Int
 calculateScoreImprovement oldOffset newOffset gates =
-  length (filter (\Gate {offsetX = offset'} -> oldOffset + offset' > 0 && offset' + newOffset <= 0) gates)
+  length (filter (\Gate {gateOffsetX = offset'} -> oldOffset + offset' > 0 && offset' + newOffset <= 0) gates)
 
 isFailed :: World -> Bool
 isFailed world@World {gates = gates, offset = offset} = any (isCollided world) (takeWhile (onScreen offset) gates)
 
--- For better UX
-collisionEpsilon :: Double
-collisionEpsilon = 0.1
+
 
 isCollided :: World -> Gate -> Bool
-isCollided World {offset = worldOffset, player = Player {y = y, hitBoxSize = r}} Gate {offsetX = offsetX, offsetY = offsetY, width = width, height = height}
-  | abs y > 10 = True -- TODO: create constant
+isCollided World {offset = worldOffset, player = Player {y = y, hitBoxSize = r}} Gate {gateOffsetX = offsetX, gateOffsetY = offsetY, gateWidth = width, gateHeight = height}
+  | abs y > screenHeight = True
   | ( (y + rHalf) > (offsetY + (height / 2) + collisionEpsilon)
         || (y - rHalf) < (offsetY - (height / 2) - collisionEpsilon)
     )
@@ -309,8 +188,3 @@ updatePlayer
       newVelocity = velocity + dt * gravity
       newY = max (y + velocity * dt) (-12)
 
-data Player = Player
-  { velocity :: Double,
-    y :: Double,
-    hitBoxSize :: Double
-  }
