@@ -1,7 +1,7 @@
-{-# LANGUAGE InstanceSigs #-}
 module Game.Data where
 
 import System.Random ( StdGen )
+import Game.Constants
 
 
 data World = World
@@ -52,12 +52,38 @@ data SlowMotion = SlowMotion
 class GameObject g where
     offsetX :: g -> Double
     offsetY :: g -> Double
+    isCollided :: World -> g -> Bool
+
 
 
 instance GameObject Gate where
     offsetX Gate{gateOffsetX=x} = x
     offsetY Gate{gateOffsetY=y} = y
+    isCollided World {offset = worldOffset, player = Player {y = playerY, hitBoxSize = playerSize}}
+        Gate {gateOffsetX = x, gateOffsetY = y, gateWidth = width, gateHeight = height}
+        | abs playerY > screenHeight = True
+        | ( (playerY + playerR) > (y + (height / 2) + collisionEpsilon)
+            || (playerY - playerR) < (y - (height / 2) - collisionEpsilon)
+        )
+            && (-worldOffset + playerR) > (x - width / 2 + collisionEpsilon)
+            && (-worldOffset - playerR) < (x + width / 2 - collisionEpsilon) =
+            True
+        | otherwise = False
+        where
+            playerR = playerSize / 2
 
 instance GameObject SlowMotion where
     offsetX SlowMotion{slowMotionOffsetX=x} = x
     offsetY SlowMotion{slowMotionOffsetY=y} = y
+    isCollided World {offset = worldOffset, player = Player {y = playerY, hitBoxSize = playerSize}}
+        SlowMotion {slowMotionOffsetX = x, slowMotionOffsetY = y, radius = boostR}
+        -- assume boost is square
+        | ( (playerY + playerR) > (y + boostR)
+            || (playerY - playerR) < (y - boostR)
+        )
+            && (-worldOffset + playerR) > (x - boostR)
+            && (-worldOffset - playerR) < (x + boostR) =
+            True
+        | otherwise = False
+        where
+            playerR = playerSize / 2

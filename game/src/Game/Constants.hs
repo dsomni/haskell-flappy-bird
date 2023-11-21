@@ -38,3 +38,12 @@ worldSpeedIncrease = 0.001
 -- Some collisions tolerance or better UX
 collisionEpsilon :: Double
 collisionEpsilon = 0.1
+
+
+-- How often player meets boosts
+boostOccurrenceProbability :: Double
+boostOccurrenceProbability = 1
+
+-- How boost spawns inside gate (between tubes)
+boostInsideGateProbability :: Double
+boostInsideGateProbability = 0.5

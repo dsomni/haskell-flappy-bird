@@ -34,11 +34,10 @@ getSpawnFieldInside shift Gate {gateOffsetX = x, gateOffsetY = y, gateWidth=w, g
 getSpawnField :: Double -> StdGen->  Gate -> Gate -> (Double, Double, Double, Double)
 getSpawnField shift gen = getPositions randomValue shift
     where
-      insideProbability :: Double
-      insideProbability = 0.3
+
       (randomValue,_) = randomR (0.0, 1.0) gen
       getPositions v
-        | v < insideProbability = getSpawnFieldInside
+        | v < boostInsideGateProbability = getSpawnFieldInside
         | otherwise = getSpawnFieldOutside
 
 
@@ -60,11 +59,8 @@ sampleBoosts gen gates = boosts
     spawnFields = zipWith3 (getSpawnField radius) generators gates (drop 1 gates)
     (xs, ys) = unzip (zipWith generatePosition generators spawnFields)
 
-    occurrenceProbability :: Double
-    occurrenceProbability = 0.4
-
     hidden :: [Bool]
-    hidden = map ((>occurrenceProbability) . fst . randomR (0,1)) generators
+    hidden = map ((>boostOccurrenceProbability) . fst . randomR (0,1)) generators
 
     boosts = zipWith6
       SlowMotion
@@ -132,6 +128,19 @@ handleIdleEvent (KeyPress " ") world = world {state = Progress}
 handleIdleEvent _ world = world
 
 
+handleBoostHide :: World -> Boost -> Boost
+handleBoostHide w b@SlowMotion{} = if isCollided w b then b {hidden = True} else b
+
+applyBoosts :: World -> World
+applyBoosts world@World{boosts=[]} = world
+applyBoosts world@World{offset=globalOffset, boosts=(boost: restBoosts)}
+  | onScreen globalOffset boost = newWorld {boosts=newBoost : newRestBoosts}
+  | otherwise = world
+  where
+    newWorld@World{boosts=newRestBoosts} = applyBoosts world {boosts=restBoosts}
+    newBoost = handleBoostHide world boost
+
+
 
 updateWorld :: Double -> World -> World
 updateWorld dt world@World {state = Fail, player = player} = newStaticWorld
@@ -139,7 +148,7 @@ updateWorld dt world@World {state = Fail, player = player} = newStaticWorld
     newFailedPlayer = updatePlayer dt player
     newStaticWorld = world {speed = 0, player = newFailedPlayer}
 updateWorld dt world@World {..} =
-  newWorldWithPlayer
+  applyBoosts newWorldWithPlayer
   where
     newOffset = offset - dt * speed
     newWorld = world {time = time + dt, offset = newOffset, speed = max (speed + worldSpeedIncrease) maxWorldSpeed}
@@ -154,6 +163,8 @@ updateWorld dt world@World {..} =
             _ -> player
         )
 
+
+
     newWorldWithPlayer = newWorld {state = newState, gates = dropWhile (offScreen offset) gates,
     boosts = dropWhile (offScreen offset) boosts, score = score + scoreImprovement, player = newPlayer}
 
@@ -165,19 +176,6 @@ isFailed :: World -> Bool
 isFailed world@World {gates = gates, offset = offset} = any (isCollided world) (takeWhile (onScreen offset) gates)
 
 
-
-isCollided :: World -> Gate -> Bool
-isCollided World {offset = worldOffset, player = Player {y = y, hitBoxSize = r}} Gate {gateOffsetX = offsetX, gateOffsetY = offsetY, gateWidth = width, gateHeight = height}
-  | abs y > screenHeight = True
-  | ( (y + rHalf) > (offsetY + (height / 2) + collisionEpsilon)
-        || (y - rHalf) < (offsetY - (height / 2) - collisionEpsilon)
-    )
-      && (-worldOffset + rHalf) > (offsetX - width / 2 + collisionEpsilon)
-      && (-worldOffset - rHalf) < (offsetX + width / 2 - collisionEpsilon) =
-      True
-  | otherwise = False
-  where
-    rHalf = r / 2
 
 updatePlayer :: Double -> Player -> Player
 updatePlayer
