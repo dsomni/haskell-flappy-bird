@@ -11,7 +11,7 @@ drawWorld world@World {..} =
   maybeDrawMenu state
     <> drawScore score
     <> debugInfo
-    <> translated  playerShift  0 (drawPlayer player state)
+    <> translated  playerShift  0 (drawPlayer player immunity state)
     <> translated offset 0 (drawGameObjects offset gates)
     <> translated offset 0 (drawBoosts offset boosts)
 
@@ -32,13 +32,15 @@ drawGameObjects offset objects=  pictures $ map draw  onScreenObjects
 drawBoosts :: (BoostObject b) => Double -> [b] -> Picture
 drawBoosts offset b = drawGameObjects offset $ filter (not . hidden) b
 
-drawPlayer :: Player -> WorldState -> Picture
-drawPlayer Player {y = y} state = translated 0 y maybeDeadPlayerPicture
-  where
-    playerPicture =lettering "\x1F6F8"
-    maybeDeadPlayerPicture = case state of
-      Fail -> reflected 0 playerPicture
-      _ -> playerPicture
+drawPlayer :: Player -> Bool -> WorldState -> Picture
+drawPlayer Player {y = y, hitBoxSize = playerSize} immunity state =
+    translated 0 y (shield  <> maybeDeadPlayerPicture)
+    where
+        shield = if immunity then colored (translucent yellow) $ solidCircle playerSize else blank
+        playerPicture = lettering "\x1F6F8"
+        maybeDeadPlayerPicture = case state of
+            Fail -> reflected 0 playerPicture
+            _ -> playerPicture
 
 drawScore :: Int -> Picture
 drawScore score = translated (-screenWidth/2+ 1) (-screenHeight/2 + 1) (lettering (T.pack (show score)))

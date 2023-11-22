@@ -60,13 +60,20 @@ sampleBoosts gen gates = boosts
     hidden' :: [Bool]
     hidden' = map ((>boostOccurrenceProbability) . fst . randomR (0,1)) generators
 
-    boosts = zipWith6
-      SlowMotion
+    -- boosts = zipWith6
+    --   SlowMotion
+    --   xs
+    --   ys
+    --   (repeat radius')
+    --   (repeat 0.9)
+    --   (repeat 5)
+    --   hidden'
+    boosts = zipWith5
+      Immunity
       xs
       ys
       (repeat radius')
-      (repeat 0.9)
-      (repeat 5)
+      (repeat 4)
       hidden'
 
 
@@ -87,7 +94,7 @@ sampleGates gen =
     xs = [gatesShift, gatesShift + gatesSpacing ..]
 
 generateWorld :: WorldState -> StdGen -> World
-generateWorld ws g = World (-2) gates boosts [] 0 3 3 (Player 0 0 1) 0 ws gen False False
+generateWorld ws g = World (-2) gates boosts [] 0 3 3 (Player 0 0 1) 0 ws gen False False False
   where
     (gen, _) = split g
     gates = sampleGates gen
@@ -159,7 +166,7 @@ updateWorld dt world@World {..} =
     newOffset = offset - dt * currentSpeed
     newSpeed = min (speed + worldSpeedIncrease) maxWorldSpeed
     newWorld = world {time = time + dt, offset = newOffset, speed = newSpeed}
-    screenGates = takeWhile (onScreen offset) gates -- TODO: consider only gates with offset <= player's position
+    screenGates = takeWhile (onScreen offset) gates
     scoreImprovement = calculateScoreImprovement offset newOffset screenGates
     newState = if isFailed newWorld then Fail else Progress
     newPlayer =
@@ -174,7 +181,8 @@ updateWorld dt world@World {..} =
 
     newWorldWithPlayer = newWorld
                             {state = newState,
-                            currentSpeed=newSpeed,
+                            currentSpeed=newSpeed, -- for SlowMotion boost
+                            immunity=False, -- for Immunity boost
                             gates = dropWhile (offScreen offset) gates,
                             boosts = dropWhile (offScreen offset) boosts,
                             activeBoosts = newActiveBoosts,

@@ -18,8 +18,8 @@ data World = World
       state :: WorldState,
       generator :: StdGen,
       spacePressed :: Bool,
-
-      debugMode :: Bool
+      debugMode :: Bool,
+      immunity :: Bool
     }
 
 
@@ -83,7 +83,7 @@ instance BoostObject Boost  where
   color SlowMotion{} = red
   color Immunity{} = blue
   apply w@World{currentSpeed=speed'} SlowMotion{speedCoefficient=ratio} = w{currentSpeed = ratio*speed'}
-  apply w Immunity{} = w
+  apply w Immunity{} = w{immunity=True}
 
 
 -- * Game Object
@@ -96,19 +96,22 @@ class GameObject g where
 instance GameObject Gate where
     offsetX Gate{gateOffsetX=x} = x
     offsetY Gate{gateOffsetY=y} = y
-    isCollided World {offset = worldOffset, player = Player {y = playerY, hitBoxSize = playerSize}}
+    isCollided
+        World {offset = worldOffset, immunity = immunity',
+            player = Player {y = playerY, hitBoxSize = playerSize}}
         Gate {gateOffsetX = x, gateOffsetY = y, gateWidth = width, gateHeight = height}
-        | abs playerY > screenHeight/2 = True
-        | ( (playerY + playerR) > (y + (height / 2) + collisionEpsilon)
-            || (playerY - playerR) < (y - (height / 2) - collisionEpsilon)
-        )
-            && (playerX + playerR) > (x - width / 2 + collisionEpsilon)
-            && (playerX  - playerR) < (x + width / 2 - collisionEpsilon) =
-            True
-        | otherwise = False
-        where
-            playerR = playerSize / 2
-            playerX = -worldOffset + playerShift
+            | abs playerY > screenHeight/2 = True -- like face with 'ground'
+            | immunity' = False
+            | ( (playerY + playerR) > (y + (height / 2) + collisionEpsilon)
+                || (playerY - playerR) < (y - (height / 2) - collisionEpsilon)
+            )
+                && (playerX + playerR) > (x - width / 2 + collisionEpsilon)
+                && (playerX  - playerR) < (x + width / 2 - collisionEpsilon) =
+                True
+            | otherwise = False
+            where
+                playerR = playerSize / 2
+                playerX = -worldOffset + playerShift
 
     draw (Gate width offsetX' offsetY' height) = top <> bottom
       where
