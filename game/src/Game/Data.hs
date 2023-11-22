@@ -2,6 +2,7 @@ module Game.Data where
 
 import System.Random ( StdGen )
 import Game.Constants
+import CodeWorld
 
 
 data World = World
@@ -45,6 +46,7 @@ data SlowMotion = SlowMotion
     slowMotionOffsetY :: Double,
     slowMotionDuration :: Double,
     speedCoefficient:: Double,
+    color :: Color,
     hidden :: Bool
   }
   deriving (Show)
@@ -78,12 +80,9 @@ instance GameObject SlowMotion where
     isCollided World {offset = worldOffset, player = Player {y = playerY, hitBoxSize = playerSize}}
         SlowMotion {slowMotionOffsetX = x, slowMotionOffsetY = y, radius = boostR}
         -- assume boost is square
-        | ( (playerY + playerR) > (y + boostR)
-            || (playerY - playerR) < (y - boostR)
-        )
-            && (-worldOffset + playerR) > (x - boostR)
-            && (-worldOffset - playerR) < (x + boostR) =
-            True
+        | ((playerY + playerR) > (y - boostR) && (playerY - playerR) < (y + boostR))
+        &&((-worldOffset + playerR) > (x - boostR)  &&  (-worldOffset - playerR) < (x + boostR))
+            = True
         | otherwise = False
         where
             playerR = playerSize / 2

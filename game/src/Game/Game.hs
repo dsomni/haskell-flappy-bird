@@ -62,13 +62,14 @@ sampleBoosts gen gates = boosts
     hidden :: [Bool]
     hidden = map ((>boostOccurrenceProbability) . fst . randomR (0,1)) generators
 
-    boosts = zipWith6
+    boosts = zipWith7
       SlowMotion
       (repeat radius)
       xs
       ys
       (repeat 10)
       (repeat 0.5)
+      (repeat red)
       hidden
 
 
@@ -129,6 +130,7 @@ handleIdleEvent _ world = world
 
 
 handleBoostHide :: World -> Boost -> Boost
+-- handleBoostHide w b@SlowMotion{} = if isCollided w b then b {color = green} else b
 handleBoostHide w b@SlowMotion{} = if isCollided w b then b {hidden = True} else b
 
 applyBoosts :: World -> World

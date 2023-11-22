@@ -31,8 +31,8 @@ drawGate (Gate width offsetX offsetY height) = top <> bottom
     bottom = colored green (translated offsetX (offsetY - windowHeight / 2 - height / 2) (solidRectangle width windowHeight))
 
 drawBoost :: Boost -> Picture
-drawBoost SlowMotion{radius=r, slowMotionOffsetX=x, slowMotionOffsetY=y} =
-  colored red (translated x y (solidCircle r))
+drawBoost SlowMotion{color=color, radius=r, slowMotionOffsetX=x, slowMotionOffsetY=y} =
+  colored color (translated x y (solidCircle r))
 
 drawGates :: [Gate] -> Picture
 drawGates = pictures . map drawGate

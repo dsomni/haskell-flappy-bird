@@ -37,7 +37,7 @@ worldSpeedIncrease = 0.001
 
 -- Some collisions tolerance or better UX
 collisionEpsilon :: Double
-collisionEpsilon = 0.1
+collisionEpsilon = 0.05
 
 
 -- How often player meets boosts
