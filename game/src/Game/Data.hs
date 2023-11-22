@@ -18,8 +18,8 @@ data World = World
       state :: WorldState,
       generator :: StdGen,
       spacePressed :: Bool,
-      debugMode :: Bool,
-      immunity :: Bool
+      immunity :: Bool,
+      debugMode :: Bool
     }
 
 

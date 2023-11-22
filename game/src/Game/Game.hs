@@ -1,6 +1,7 @@
 module Game.Game where
 
 import CodeWorld
+
 import Data.List
 import System.Random
 import Game.Constants
@@ -60,21 +61,41 @@ sampleBoosts gen gates = boosts
     hidden' :: [Bool]
     hidden' = map ((>boostOccurrenceProbability) . fst . randomR (0,1)) generators
 
-    -- boosts = zipWith6
-    --   SlowMotion
-    --   xs
-    --   ys
-    --   (repeat radius')
-    --   (repeat 0.9)
-    --   (repeat 5)
-    --   hidden'
-    boosts = zipWith5
+
+    slowMotionBoosts = zipWith6
+      SlowMotion
+      xs
+      ys
+      (repeat radius')
+      (repeat 0.8)
+      (repeat 5)
+      hidden'
+
+    immunityBoosts = zipWith5
       Immunity
       xs
       ys
       (repeat radius')
       (repeat 4)
       hidden'
+
+    possibleBoosts :: [(Boost, Boost)]
+    possibleBoosts = zip slowMotionBoosts immunityBoosts
+
+    chooseBoost :: (Boost, Boost) -> Int -> Boost
+    chooseBoost (b,_) 0 = b
+    chooseBoost (_,b) _ = b
+
+    indices :: [Int]
+    indices = map (fst . randomR (0, 1)) generators
+
+    boosts = zipWith chooseBoost possibleBoosts indices
+
+
+
+chooseBoost' :: (Int, Int) -> Int -> Int
+chooseBoost' (b,_) 0 = b
+chooseBoost' (_,b) _ = b
 
 
 sampleGates :: StdGen -> [Gate]
@@ -93,8 +114,8 @@ sampleGates gen =
     ys = randomRs (-3.0, 3.0) g2
     xs = [gatesShift, gatesShift + gatesSpacing ..]
 
-generateWorld :: WorldState -> StdGen -> World
-generateWorld ws g = World (-2) gates boosts [] 0 3 3 (Player 0 0 1) 0 ws gen False False False
+generateWorld :: WorldState -> Bool -> StdGen -> World
+generateWorld ws debug g = World (-2) gates boosts [] 0 3 3 (Player 0 0 1) 0 ws gen False  False debug
   where
     (gen, _) = split g
     gates = sampleGates gen
@@ -103,7 +124,7 @@ generateWorld ws g = World (-2) gates boosts [] 0 3 3 (Player 0 0 1) 0 ws gen Fa
 newGame :: IO ()
 newGame = do
   gen <- newStdGen
-  activityOf (generateWorld Idle gen) handleEvent drawWorld
+  activityOf (generateWorld Idle False gen) handleEvent drawWorld
 
 handleEvent :: Event -> World -> World
 handleEvent (KeyPress "D") world@World{debugMode=oldDebug} = world {debugMode=not oldDebug}
@@ -125,7 +146,7 @@ handleProgressEvent _ world = world
 
 handleFailEvent :: Event -> World -> World
 handleFailEvent (TimePassing dt) world = updateWorld dt world
-handleFailEvent (KeyPress " ") World {generator = g} = generateWorld Progress g
+handleFailEvent (KeyPress " ") World {generator = g, debugMode = d} = generateWorld Progress d g
 handleFailEvent _ world = world
 
 handleIdleEvent :: Event -> World -> World

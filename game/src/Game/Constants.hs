@@ -33,7 +33,7 @@ maxWorldSpeed :: Double
 maxWorldSpeed = 5
 
 worldSpeedIncrease :: Double
-worldSpeedIncrease = 0.001
+worldSpeedIncrease = 0.003
 
 -- Some collisions tolerance or better UX
 collisionEpsilon :: Double
