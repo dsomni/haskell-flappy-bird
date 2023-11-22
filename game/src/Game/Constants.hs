@@ -28,7 +28,6 @@ playerShift = -5
 gatesSpacing :: Double
 gatesSpacing = 6.0
 
-
 maxWorldSpeed :: Double
 maxWorldSpeed = 5
 
@@ -38,7 +37,6 @@ worldSpeedIncrease = 0.003
 -- Some collisions tolerance or better UX
 collisionEpsilon :: Double
 collisionEpsilon = 0.05
-
 
 -- How often player meets boosts
 boostOccurrenceProbability :: Double
