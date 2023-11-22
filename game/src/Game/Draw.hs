@@ -11,13 +11,10 @@ drawWorld world@World {..} =
   maybeDrawMenu state
     <> drawScore score
     <> drawDebug world
-    <> translated
-      playerShift
-      0
-      ( drawPlayer player state
-      <> translated offset 0 (drawGates (takeWhile (onScreen offset) gates))
-      <> translated offset 0 (drawBoosts (takeWhile (onScreen offset) boosts))
-      )
+    <> translated  playerShift  0 (drawPlayer player state)
+    <> translated offset 0 (drawGates (takeWhile (onScreen offset) gates))
+    <> translated offset 0 (drawBoosts (takeWhile (onScreen offset) boosts))
+
   where
     maybeDrawMenu :: WorldState -> Picture
     maybeDrawMenu Progress = blank
@@ -27,9 +24,8 @@ drawWorld world@World {..} =
 drawGate :: Gate -> Picture
 drawGate (Gate width offsetX offsetY height) = top <> bottom
   where
-    windowHeight = 30
-    top = colored green (translated offsetX (offsetY + windowHeight / 2 + height / 2) (solidRectangle width windowHeight))
-    bottom = colored green (translated offsetX (offsetY - windowHeight / 2 - height / 2) (solidRectangle width windowHeight))
+    top = colored green (translated offsetX (offsetY + screenHeight / 2 + height / 2) (solidRectangle width screenHeight))
+    bottom = colored green (translated offsetX (offsetY - screenHeight / 2 - height / 2) (solidRectangle width screenHeight))
 
 drawBoost :: Boost -> Picture
 drawBoost SlowMotion{color=color, radius=r, slowMotionOffsetX=x, slowMotionOffsetY=y} =
@@ -42,9 +38,9 @@ drawBoosts :: [Boost] -> Picture
 drawBoosts = pictures . map drawBoost . filter (\SlowMotion{hidden = hidden} -> not hidden)
 
 drawPlayer :: Player -> WorldState -> Picture
-drawPlayer Player {y = y, hitBoxSize = r} state = translated 0 y maybeDeadPlayerPicture
+drawPlayer Player {y = y} state = translated 0 y maybeDeadPlayerPicture
   where
-    playerPicture = rectangle r r <> lettering "\x1F6F8"
+    playerPicture =lettering "\x1F6F8"
     maybeDeadPlayerPicture = case state of
       Fail -> reflected 0 playerPicture
       _ -> playerPicture
@@ -53,9 +49,16 @@ drawScore :: Int -> Picture
 drawScore score = translated (-5) (-5) (lettering (T.pack (show score)))
 
 drawDebug :: World -> Picture
-drawDebug World{speed=s, currentSpeed=s', activeBoosts=b, boosts=(bb:bs), offset=o} =
-  translated 0 (-7) (lettering (T.pack (show s))) <>
-  translated 0 (-8) (lettering (T.pack (show s'))) <>
-  translated (-3) (-9) (lettering (T.pack (show (length b)))) <>
-  translated 3 (-9) (lettering (T.pack (show (offsetX bb)))) <>
-  translated 6 (-9) (lettering (T.pack (show o)))
+drawDebug World{speed=speed',
+                currentSpeed=currentSpeed',
+                activeBoosts=activeBoosts',
+                boosts=boosts',
+                offset=offset',
+                player = Player{y=playerY, hitBoxSize=playerSize}} =
+  colored red (rectangle screenWidth screenHeight)<>
+  colored blue (solidCircle 0.1)<>
+  translated 0 (-7) (lettering (T.pack (show speed'))) <>
+  translated 0 (-8) (lettering (T.pack (show currentSpeed'))) <>
+  translated (-3) (-9) (lettering (T.pack (show (length activeBoosts')))) <>
+  translated 0 (-9) (lettering (T.pack (show (length $ takeWhile (onScreen offset') boosts'))))<>
+  translated  playerShift  playerY (rectangle playerSize playerSize)

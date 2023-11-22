@@ -107,10 +107,9 @@ handleEvent e world@World {state = Idle} = handleIdleEvent e world
 handleProgressEvent :: Event -> World -> World
 handleProgressEvent (TimePassing dt) world = updateWorld dt world
 handleProgressEvent (KeyPress " ") world@World {..}
-  | spacePressed = world
+  | spacePressed = updateWorld 0 world
   | otherwise =
-      updateWorld 0 $
-        world
+      updateWorld 0 world
           { player = player {velocity = pushAcceleration},
             spacePressed = True
           }
@@ -145,7 +144,7 @@ addActiveBoosts world@World{offset=globalOffset, boosts=(boost: restBoosts)}
   | onScreen globalOffset boost = newWorld {boosts=newBoost : newRestBoosts, activeBoosts=newActiveBoosts'}
   | otherwise = world
   where
-    newWorld@World{boosts=newRestBoosts, activeBoosts=newActiveBoosts} = applyBoosts world {boosts=restBoosts}
+    newWorld@World{boosts=newRestBoosts, activeBoosts=newActiveBoosts} = addActiveBoosts world {boosts=restBoosts}
     isNewBoostTaken = isCollided world boost
     newBoost = if isNewBoostTaken then boost {hidden = True} else boost
     newActiveBoosts' = if isNewBoostTaken then newBoost:newActiveBoosts else newActiveBoosts
@@ -176,8 +175,15 @@ updateWorld dt world@World {..} =
 
     newActiveBoosts = filter (\SlowMotion{slowMotionDuration=d} -> d >0) $ map (\b@SlowMotion{slowMotionDuration=d} -> b{slowMotionDuration = d-dt}) activeBoosts
 
-    newWorldWithPlayer = newWorld {state = newState, currentSpeed=newSpeed, gates = dropWhile (offScreen offset) gates,
-    boosts = dropWhile (offScreen offset) boosts, score = score + scoreImprovement, player = newPlayer, activeBoosts=newActiveBoosts}
+    newWorldWithPlayer = newWorld
+                            {state = newState,
+                            currentSpeed=newSpeed,
+                            gates = dropWhile (offScreen offset) gates,
+                            boosts = dropWhile (offScreen offset) boosts,
+                            activeBoosts = newActiveBoosts,
+                            score = score + scoreImprovement,
+                            player = newPlayer}
+
 
 calculateScoreImprovement :: Double -> Double -> [Gate] -> Int
 calculateScoreImprovement oldOffset newOffset gates =

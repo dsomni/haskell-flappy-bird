@@ -6,7 +6,7 @@ screenWidth :: Double
 screenWidth = 20
 
 screenHeight :: Double
-screenHeight = 10
+screenHeight = 20
 
 -- * Game constants
 
@@ -19,7 +19,7 @@ pushAcceleration = 7
 
 -- Position from where start building obstacles
 gatesShift :: Double
-gatesShift = 10.0
+gatesShift = 2.0
 
 playerShift :: Double
 playerShift = -5

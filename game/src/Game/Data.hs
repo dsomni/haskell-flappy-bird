@@ -65,17 +65,17 @@ instance GameObject Gate where
     offsetY Gate{gateOffsetY=y} = y
     isCollided World {offset = worldOffset, player = Player {y = playerY, hitBoxSize = playerSize}}
         Gate {gateOffsetX = x, gateOffsetY = y, gateWidth = width, gateHeight = height}
-        -- | True = False
-        | abs playerY > screenHeight = True
+        | abs playerY > screenHeight/2 = True
         | ( (playerY + playerR) > (y + (height / 2) + collisionEpsilon)
             || (playerY - playerR) < (y - (height / 2) - collisionEpsilon)
         )
-            && (-worldOffset + playerR) > (x - width / 2 + collisionEpsilon)
-            && (-worldOffset - playerR) < (x + width / 2 - collisionEpsilon) =
+            && (playerX + playerR) > (x - width / 2 + collisionEpsilon)
+            && (playerX  - playerR) < (x + width / 2 - collisionEpsilon) =
             True
         | otherwise = False
         where
             playerR = playerSize / 2
+            playerX = -worldOffset + playerShift
 
 instance GameObject SlowMotion where
     offsetX SlowMotion{slowMotionOffsetX=x} = x
@@ -85,8 +85,10 @@ instance GameObject SlowMotion where
         -- assume boost is square
         | hidden = False
         | ((playerY + playerR) > (y - boostR) && (playerY - playerR) < (y + boostR))
-        &&((-worldOffset + playerR) > (x - boostR)  &&  (-worldOffset - playerR) < (x + boostR))
+        &&((playerX + playerR) > (x - boostR)  &&  (playerX - playerR) < (x + boostR))
             = True
         | otherwise = False
         where
             playerR = playerSize / 2
+            playerX = -worldOffset + playerShift
+
