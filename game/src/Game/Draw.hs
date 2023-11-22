@@ -10,32 +10,27 @@ drawWorld :: World -> Picture
 drawWorld world@World {..} =
   maybeDrawMenu state
     <> drawScore score
-    <> drawDebug world
+    <> debugInfo
     <> translated  playerShift  0 (drawPlayer player state)
-    <> translated offset 0 (drawGates (takeWhile (onScreen offset) gates))
-    <> translated offset 0 (drawBoosts (takeWhile (onScreen offset) boosts))
+    <> translated offset 0 (drawGameObjects offset gates)
+    <> translated offset 0 (drawBoosts offset boosts)
 
   where
+    debugInfo = if debugMode then drawDebug world else blank
+
     maybeDrawMenu :: WorldState -> Picture
     maybeDrawMenu Progress = blank
     maybeDrawMenu Fail = lettering "Press space to try again" <> colored gray (solidRectangle 10 5)
     maybeDrawMenu Idle = lettering "Press space to start" <> colored gray (solidRectangle 10 5)
 
-drawGate :: Gate -> Picture
-drawGate (Gate width offsetX offsetY height) = top <> bottom
+
+drawGameObjects :: (GameObject g) => Double -> [g] -> Picture
+drawGameObjects offset objects=  pictures $ map draw  onScreenObjects
   where
-    top = colored green (translated offsetX (offsetY + screenHeight / 2 + height / 2) (solidRectangle width screenHeight))
-    bottom = colored green (translated offsetX (offsetY - screenHeight / 2 - height / 2) (solidRectangle width screenHeight))
+    onScreenObjects = takeWhile (onScreen offset) objects
 
-drawBoost :: Boost -> Picture
-drawBoost SlowMotion{color=color, radius=r, slowMotionOffsetX=x, slowMotionOffsetY=y} =
-  colored color (translated x y (solidCircle r))
-
-drawGates :: [Gate] -> Picture
-drawGates = pictures . map drawGate
-
-drawBoosts :: [Boost] -> Picture
-drawBoosts = pictures . map drawBoost . filter (\SlowMotion{hidden = hidden} -> not hidden)
+drawBoosts :: (BoostObject b) => Double -> [b] -> Picture
+drawBoosts offset b = drawGameObjects offset $ filter (not . hidden) b
 
 drawPlayer :: Player -> WorldState -> Picture
 drawPlayer Player {y = y} state = translated 0 y maybeDeadPlayerPicture
@@ -46,7 +41,7 @@ drawPlayer Player {y = y} state = translated 0 y maybeDeadPlayerPicture
       _ -> playerPicture
 
 drawScore :: Int -> Picture
-drawScore score = translated (-5) (-5) (lettering (T.pack (show score)))
+drawScore score = translated (-screenWidth/2+ 1) (-screenHeight/2 + 1) (lettering (T.pack (show score)))
 
 drawDebug :: World -> Picture
 drawDebug World{speed=speed',

@@ -52,23 +52,22 @@ randomGens = unfoldr (Just . split)
 sampleBoosts :: StdGen -> [Gate] -> [Boost]
 sampleBoosts gen gates = boosts
   where
-    radius = 0.25
+    radius' = 0.25
     generators = randomGens gen
-    spawnFields = zipWith3 (getSpawnField radius) generators gates (drop 1 gates)
+    spawnFields = zipWith3 (getSpawnField radius') generators gates (drop 1 gates)
     (xs, ys) = unzip (zipWith generatePosition generators spawnFields)
 
-    hidden :: [Bool]
-    hidden = map ((>boostOccurrenceProbability) . fst . randomR (0,1)) generators
+    hidden' :: [Bool]
+    hidden' = map ((>boostOccurrenceProbability) . fst . randomR (0,1)) generators
 
-    boosts = zipWith7
+    boosts = zipWith6
       SlowMotion
-      (repeat radius)
       xs
       ys
-      (repeat 10)
+      (repeat radius')
       (repeat 0.9)
-      (repeat red)
-      hidden
+      (repeat 5)
+      hidden'
 
 
 sampleGates :: StdGen -> [Gate]
@@ -88,7 +87,7 @@ sampleGates gen =
     xs = [gatesShift, gatesShift + gatesSpacing ..]
 
 generateWorld :: WorldState -> StdGen -> World
-generateWorld ws g = World (-2) gates boosts [] 0 3 3 (Player 0 0 1) 0 ws gen False
+generateWorld ws g = World (-2) gates boosts [] 0 3 3 (Player 0 0 1) 0 ws gen False False
   where
     (gen, _) = split g
     gates = sampleGates gen
@@ -100,6 +99,7 @@ newGame = do
   activityOf (generateWorld Idle gen) handleEvent drawWorld
 
 handleEvent :: Event -> World -> World
+handleEvent (KeyPress "D") world@World{debugMode=oldDebug} = world {debugMode=not oldDebug}
 handleEvent e world@World {state = Progress} = handleProgressEvent e world
 handleEvent e world@World {state = Fail} = handleFailEvent e world
 handleEvent e world@World {state = Idle} = handleIdleEvent e world
@@ -127,13 +127,10 @@ handleIdleEvent _ world = world
 
 
 
-applyBoost ::  World -> Boost -> World
-applyBoost w@World{currentSpeed=speed'} SlowMotion{speedCoefficient=ratio} = w{currentSpeed = ratio*speed'}
-
 applyBoosts :: World -> World
 applyBoosts world@World{activeBoosts=[]}  = world
-applyBoosts world@World{activeBoosts=[b]}  = applyBoost world b
-applyBoosts world@World{activeBoosts=boost:boosts}  = applyBoost (newWorld{activeBoosts=boost:boosts} ) boost
+applyBoosts world@World{activeBoosts=[b]}  = apply world b
+applyBoosts world@World{activeBoosts=boost:boosts}  = apply (newWorld{activeBoosts=boost:boosts} ) boost
   where
     newWorld = applyBoosts world{activeBoosts=boosts}
 
@@ -146,7 +143,7 @@ addActiveBoosts world@World{offset=globalOffset, boosts=(boost: restBoosts)}
   where
     newWorld@World{boosts=newRestBoosts, activeBoosts=newActiveBoosts} = addActiveBoosts world {boosts=restBoosts}
     isNewBoostTaken = isCollided world boost
-    newBoost = if isNewBoostTaken then boost {hidden = True} else boost
+    newBoost = if isNewBoostTaken then  setHidden boost True else boost
     newActiveBoosts' = if isNewBoostTaken then newBoost:newActiveBoosts else newActiveBoosts
 
 
@@ -173,7 +170,7 @@ updateWorld dt world@World {..} =
             _ -> player
         )
 
-    newActiveBoosts = filter (\SlowMotion{slowMotionDuration=d} -> d >0) $ map (\b@SlowMotion{slowMotionDuration=d} -> b{slowMotionDuration = d-dt}) activeBoosts
+    newActiveBoosts = filter (\b -> duration b >0) $ map (\b -> setDuration b (duration b-dt)) activeBoosts
 
     newWorldWithPlayer = newWorld
                             {state = newState,

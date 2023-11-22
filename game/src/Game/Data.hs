@@ -17,7 +17,9 @@ data World = World
       score :: Int,
       state :: WorldState,
       generator :: StdGen,
-      spacePressed :: Bool
+      spacePressed :: Bool,
+
+      debugMode :: Bool
     }
 
 
@@ -31,8 +33,6 @@ data Player = Player
     }
 
 
-type Boost = SlowMotion
-
 data Gate = Gate
     { gateWidth :: Double,
       gateOffsetX :: Double,
@@ -41,24 +41,57 @@ data Gate = Gate
     }
     deriving (Show)
 
-data SlowMotion = SlowMotion
-  {
-    radius :: Double,
-    slowMotionOffsetX :: Double,
-    slowMotionOffsetY :: Double,
-    slowMotionDuration :: Double,
+
+data Boost =
+  SlowMotion {
+    boostOffsetX :: Double,
+    boostOffsetY :: Double,
+    boostRadius :: Double,
     speedCoefficient:: Double,
-    color :: Color,
-    hidden :: Bool
+    boostDuration :: Double,
+    boostHidden :: Bool
+  } |
+  Immunity{
+    boostOffsetX :: Double,
+    boostOffsetY :: Double,
+    boostRadius :: Double,
+    boostDuration :: Double,
+    boostHidden :: Bool
   }
-  deriving (Show)
 
+
+
+-- * Boost Object
+class GameObject b => BoostObject b where
+  radius :: b -> Double
+  duration :: b -> Double
+  hidden :: b -> Bool
+  setRadius :: b -> Double -> b
+  setDuration :: b -> Double -> b
+  setHidden :: b -> Bool -> b
+  color :: b -> Color
+  apply :: World -> b -> World
+
+
+instance BoostObject Boost  where
+  radius = boostRadius
+  duration = boostDuration
+  hidden = boostHidden
+  setRadius b newR = b {boostRadius=newR}
+  setDuration b newD = b {boostDuration=newD}
+  setHidden b newHidden = b {boostHidden=newHidden}
+  color SlowMotion{} = red
+  color Immunity{} = blue
+  apply w@World{currentSpeed=speed'} SlowMotion{speedCoefficient=ratio} = w{currentSpeed = ratio*speed'}
+  apply w Immunity{} = w
+
+
+-- * Game Object
 class GameObject g where
-    offsetX :: g -> Double
-    offsetY :: g -> Double
-    isCollided :: World -> g -> Bool
-
-
+  offsetX :: g -> Double
+  offsetY :: g -> Double
+  isCollided :: World -> g -> Bool
+  draw :: g -> Picture
 
 instance GameObject Gate where
     offsetX Gate{gateOffsetX=x} = x
@@ -77,18 +110,31 @@ instance GameObject Gate where
             playerR = playerSize / 2
             playerX = -worldOffset + playerShift
 
-instance GameObject SlowMotion where
-    offsetX SlowMotion{slowMotionOffsetX=x} = x
-    offsetY SlowMotion{slowMotionOffsetY=y} = y
-    isCollided World {offset = worldOffset, player = Player {y = playerY, hitBoxSize = playerSize}}
-        SlowMotion {slowMotionOffsetX = x, slowMotionOffsetY = y, radius = boostR, hidden=hidden}
+    draw (Gate width offsetX' offsetY' height) = top <> bottom
+      where
+        top = colored green
+          (translated offsetX' (offsetY' + screenHeight / 2 + height / 2) (solidRectangle width screenHeight))
+        bottom = colored green
+          (translated offsetX' (offsetY' - screenHeight / 2 - height / 2) (solidRectangle width screenHeight))
+
+instance GameObject Boost where
+    offsetX = boostOffsetX
+    offsetY = boostOffsetY
+    isCollided
+        World {offset = worldOffset, player = Player {y = playerY, hitBoxSize = playerSize}}
+        b
         -- assume boost is square
-        | hidden = False
+        | hidden' = False
         | ((playerY + playerR) > (y - boostR) && (playerY - playerR) < (y + boostR))
         &&((playerX + playerR) > (x - boostR)  &&  (playerX - playerR) < (x + boostR))
             = True
         | otherwise = False
         where
+            boostR = radius b
             playerR = playerSize / 2
             playerX = -worldOffset + playerShift
+            x = boostOffsetX b
+            y = boostOffsetY b
+            hidden' = boostHidden b
+    draw b= colored (color b) (translated (offsetX b) (offsetY b) (solidCircle (radius b)))
 
