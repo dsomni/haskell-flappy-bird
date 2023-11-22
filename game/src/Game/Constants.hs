@@ -3,7 +3,7 @@ module Game.Constants where
 -- * System constants
 
 screenWidth :: Double
-screenWidth = 10
+screenWidth = 20
 
 screenHeight :: Double
 screenHeight = 10
@@ -30,7 +30,7 @@ gatesSpacing = 6.0
 
 
 maxWorldSpeed :: Double
-maxWorldSpeed = 3
+maxWorldSpeed = 5
 
 worldSpeedIncrease :: Double
 worldSpeedIncrease = 0.001

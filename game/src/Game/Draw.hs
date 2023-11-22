@@ -7,9 +7,10 @@ import Game.Constants
 import Game.Utils
 
 drawWorld :: World -> Picture
-drawWorld World {..} =
+drawWorld world@World {..} =
   maybeDrawMenu state
     <> drawScore score
+    <> drawDebug world
     <> translated
       playerShift
       0
@@ -50,3 +51,11 @@ drawPlayer Player {y = y, hitBoxSize = r} state = translated 0 y maybeDeadPlayer
 
 drawScore :: Int -> Picture
 drawScore score = translated (-5) (-5) (lettering (T.pack (show score)))
+
+drawDebug :: World -> Picture
+drawDebug World{speed=s, currentSpeed=s', activeBoosts=b, boosts=(bb:bs), offset=o} =
+  translated 0 (-7) (lettering (T.pack (show s))) <>
+  translated 0 (-8) (lettering (T.pack (show s'))) <>
+  translated (-3) (-9) (lettering (T.pack (show (length b)))) <>
+  translated 3 (-9) (lettering (T.pack (show (offsetX bb)))) <>
+  translated 6 (-9) (lettering (T.pack (show o)))

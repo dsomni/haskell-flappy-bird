@@ -9,8 +9,10 @@ data World = World
     { time :: Double,
       gates :: [Gate],
       boosts :: [Boost],
+      activeBoosts:: [Boost],
       offset :: Double,
       speed :: Double,
+      currentSpeed :: Double, -- with boosts etc
       player :: Player,
       score :: Int,
       state :: WorldState,
@@ -63,6 +65,7 @@ instance GameObject Gate where
     offsetY Gate{gateOffsetY=y} = y
     isCollided World {offset = worldOffset, player = Player {y = playerY, hitBoxSize = playerSize}}
         Gate {gateOffsetX = x, gateOffsetY = y, gateWidth = width, gateHeight = height}
+        -- | True = False
         | abs playerY > screenHeight = True
         | ( (playerY + playerR) > (y + (height / 2) + collisionEpsilon)
             || (playerY - playerR) < (y - (height / 2) - collisionEpsilon)
@@ -78,8 +81,9 @@ instance GameObject SlowMotion where
     offsetX SlowMotion{slowMotionOffsetX=x} = x
     offsetY SlowMotion{slowMotionOffsetY=y} = y
     isCollided World {offset = worldOffset, player = Player {y = playerY, hitBoxSize = playerSize}}
-        SlowMotion {slowMotionOffsetX = x, slowMotionOffsetY = y, radius = boostR}
+        SlowMotion {slowMotionOffsetX = x, slowMotionOffsetY = y, radius = boostR, hidden=hidden}
         -- assume boost is square
+        | hidden = False
         | ((playerY + playerR) > (y - boostR) && (playerY - playerR) < (y + boostR))
         &&((-worldOffset + playerR) > (x - boostR)  &&  (-worldOffset - playerR) < (x + boostR))
             = True

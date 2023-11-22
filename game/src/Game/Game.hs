@@ -11,8 +11,6 @@ import Game.Utils
 run :: IO ()
 run = newGame
 
-
-
 getSpawnFieldOutside :: Double ->Gate -> Gate -> (Double, Double, Double, Double)
 getSpawnFieldOutside shift Gate {gateOffsetX = x1, gateWidth=w1}
   Gate {gateOffsetX = x2, gateWidth=w2} = (startX, endX, startY, endY)
@@ -68,7 +66,7 @@ sampleBoosts gen gates = boosts
       xs
       ys
       (repeat 10)
-      (repeat 0.5)
+      (repeat 0.9)
       (repeat red)
       hidden
 
@@ -90,7 +88,7 @@ sampleGates gen =
     xs = [gatesShift, gatesShift + gatesSpacing ..]
 
 generateWorld :: WorldState -> StdGen -> World
-generateWorld ws g = World (-2) gates boosts 0 1 (Player 0 0 1) 0 ws gen False
+generateWorld ws g = World (-2) gates boosts [] 0 3 3 (Player 0 0 1) 0 ws gen False
   where
     (gen, _) = split g
     gates = sampleGates gen
@@ -129,18 +127,28 @@ handleIdleEvent (KeyPress " ") world = world {state = Progress}
 handleIdleEvent _ world = world
 
 
-handleBoostHide :: World -> Boost -> Boost
--- handleBoostHide w b@SlowMotion{} = if isCollided w b then b {color = green} else b
-handleBoostHide w b@SlowMotion{} = if isCollided w b then b {hidden = True} else b
+
+applyBoost ::  World -> Boost -> World
+applyBoost w@World{currentSpeed=speed'} SlowMotion{speedCoefficient=ratio} = w{currentSpeed = ratio*speed'}
 
 applyBoosts :: World -> World
-applyBoosts world@World{boosts=[]} = world
-applyBoosts world@World{offset=globalOffset, boosts=(boost: restBoosts)}
-  | onScreen globalOffset boost = newWorld {boosts=newBoost : newRestBoosts}
+applyBoosts world@World{activeBoosts=[]}  = world
+applyBoosts world@World{activeBoosts=[b]}  = applyBoost world b
+applyBoosts world@World{activeBoosts=boost:boosts}  = applyBoost (newWorld{activeBoosts=boost:boosts} ) boost
+  where
+    newWorld = applyBoosts world{activeBoosts=boosts}
+
+
+addActiveBoosts :: World -> World
+addActiveBoosts world@World{boosts=[]} = world
+addActiveBoosts world@World{offset=globalOffset, boosts=(boost: restBoosts)}
+  | onScreen globalOffset boost = newWorld {boosts=newBoost : newRestBoosts, activeBoosts=newActiveBoosts'}
   | otherwise = world
   where
-    newWorld@World{boosts=newRestBoosts} = applyBoosts world {boosts=restBoosts}
-    newBoost = handleBoostHide world boost
+    newWorld@World{boosts=newRestBoosts, activeBoosts=newActiveBoosts} = applyBoosts world {boosts=restBoosts}
+    isNewBoostTaken = isCollided world boost
+    newBoost = if isNewBoostTaken then boost {hidden = True} else boost
+    newActiveBoosts' = if isNewBoostTaken then newBoost:newActiveBoosts else newActiveBoosts
 
 
 
@@ -148,12 +156,13 @@ updateWorld :: Double -> World -> World
 updateWorld dt world@World {state = Fail, player = player} = newStaticWorld
   where
     newFailedPlayer = updatePlayer dt player
-    newStaticWorld = world {speed = 0, player = newFailedPlayer}
+    newStaticWorld = world {currentSpeed = 0, player = newFailedPlayer}
 updateWorld dt world@World {..} =
-  applyBoosts newWorldWithPlayer
+  applyBoosts $ addActiveBoosts newWorldWithPlayer
   where
-    newOffset = offset - dt * speed
-    newWorld = world {time = time + dt, offset = newOffset, speed = max (speed + worldSpeedIncrease) maxWorldSpeed}
+    newOffset = offset - dt * currentSpeed
+    newSpeed = min (speed + worldSpeedIncrease) maxWorldSpeed
+    newWorld = world {time = time + dt, offset = newOffset, speed = newSpeed}
     screenGates = takeWhile (onScreen offset) gates -- TODO: consider only gates with offset <= player's position
     scoreImprovement = calculateScoreImprovement offset newOffset screenGates
     newState = if isFailed newWorld then Fail else Progress
@@ -165,10 +174,10 @@ updateWorld dt world@World {..} =
             _ -> player
         )
 
+    newActiveBoosts = filter (\SlowMotion{slowMotionDuration=d} -> d >0) $ map (\b@SlowMotion{slowMotionDuration=d} -> b{slowMotionDuration = d-dt}) activeBoosts
 
-
-    newWorldWithPlayer = newWorld {state = newState, gates = dropWhile (offScreen offset) gates,
-    boosts = dropWhile (offScreen offset) boosts, score = score + scoreImprovement, player = newPlayer}
+    newWorldWithPlayer = newWorld {state = newState, currentSpeed=newSpeed, gates = dropWhile (offScreen offset) gates,
+    boosts = dropWhile (offScreen offset) boosts, score = score + scoreImprovement, player = newPlayer, activeBoosts=newActiveBoosts}
 
 calculateScoreImprovement :: Double -> Double -> [Gate] -> Int
 calculateScoreImprovement oldOffset newOffset gates =
