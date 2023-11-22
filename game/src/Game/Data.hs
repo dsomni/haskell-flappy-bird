@@ -25,13 +25,11 @@ data World = World
 
 data WorldState = Progress | Fail | Idle
 
-
 data Player = Player
     { velocity :: Double,
       y :: Double,
       hitBoxSize :: Double
     }
-
 
 data Gate = Gate
     { gateWidth :: Double,
@@ -72,18 +70,27 @@ class GameObject b => BoostObject b where
   color :: b -> Color
   apply :: World -> b -> World
 
+  maximumDuration :: [b]->Double
+  maximumByDurationList :: [b]->[b]
+
 
 instance BoostObject Boost  where
-  radius = boostRadius
-  duration = boostDuration
-  hidden = boostHidden
-  setRadius b newR = b {boostRadius=newR}
-  setDuration b newD = b {boostDuration=newD}
-  setHidden b newHidden = b {boostHidden=newHidden}
-  color SlowMotion{} = red
-  color Immunity{} = blue
-  apply w@World{currentSpeed=speed'} SlowMotion{speedCoefficient=ratio} = w{currentSpeed = ratio*speed'}
-  apply w Immunity{} = w{immunity=True}
+    radius = boostRadius
+    duration = boostDuration
+    hidden = boostHidden
+    setRadius b newR = b {boostRadius=newR}
+    setDuration b newD = b {boostDuration=newD}
+    setHidden b newHidden = b {boostHidden=newHidden}
+    color SlowMotion{} = red
+    color Immunity{} = blue
+    apply w@World{currentSpeed=speed'} SlowMotion{speedCoefficient=ratio} = w{currentSpeed = ratio*speed'}
+    apply w Immunity{} = w{immunity=True}
+    maximumDuration [] = -1
+    maximumDuration [b] = duration b
+    maximumDuration (b:bs) = max (duration b) (maximumDuration bs)
+    maximumByDurationList bs = filter (\b -> maxDuration == duration b) bs
+        where
+            maxDuration = maximumDuration bs
 
 
 -- * Game Object

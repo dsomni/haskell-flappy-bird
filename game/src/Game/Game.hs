@@ -154,7 +154,6 @@ handleIdleEvent (KeyPress " ") world = world {state = Progress}
 handleIdleEvent _ world = world
 
 
-
 applyBoosts :: World -> World
 applyBoosts world@World{activeBoosts=[]}  = world
 applyBoosts world@World{activeBoosts=[b]}  = apply world b
@@ -162,6 +161,12 @@ applyBoosts world@World{activeBoosts=boost:boosts}  = apply (newWorld{activeBoos
   where
     newWorld = applyBoosts world{activeBoosts=boosts}
 
+
+filterBestActiveBoosts :: [Boost] -> [Boost]
+filterBestActiveBoosts boosts = slowMotionBoosts ++ immunityBoosts
+    where
+        slowMotionBoosts = maximumByDurationList [ b | b@(SlowMotion {}) <- boosts ]
+        immunityBoosts = maximumByDurationList [ b | b@(Immunity {}) <- boosts ]
 
 addActiveBoosts :: World -> World
 addActiveBoosts world@World{boosts=[]} = world
@@ -182,7 +187,7 @@ updateWorld dt world@World {state = Fail, player = player} = newStaticWorld
     newFailedPlayer = updatePlayer dt player
     newStaticWorld = world {currentSpeed = 0, player = newFailedPlayer}
 updateWorld dt world@World {..} =
-  applyBoosts $ addActiveBoosts newWorldWithPlayer
+  newWorldWithBoosts{activeBoosts = filterBestActiveBoosts finalActiveBoosts'}
   where
     newOffset = offset - dt * currentSpeed
     newSpeed = min (speed + worldSpeedIncrease) maxWorldSpeed
@@ -210,6 +215,7 @@ updateWorld dt world@World {..} =
                             score = score + scoreImprovement,
                             player = newPlayer}
 
+    newWorldWithBoosts@World{activeBoosts=finalActiveBoosts'} = applyBoosts $ addActiveBoosts newWorldWithPlayer
 
 calculateScoreImprovement :: Double -> Double -> [Gate] -> Int
 calculateScoreImprovement oldOffset newOffset gates =

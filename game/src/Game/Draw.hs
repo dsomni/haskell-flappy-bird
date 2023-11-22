@@ -10,6 +10,7 @@ drawWorld :: World -> Picture
 drawWorld world@World {..} =
   maybeDrawMenu state
     <> drawScore score
+    <> drawActiveBoosts activeBoosts
     <> debugInfo
     <> translated  playerShift  0 (drawPlayer player immunity state)
     <> translated offset 0 (drawGameObjects offset gates)
@@ -23,6 +24,26 @@ drawWorld world@World {..} =
     maybeDrawMenu Fail = lettering "Press space to try again" <> colored gray (solidRectangle 10 5)
     maybeDrawMenu Idle = lettering "Press space to start" <> colored gray (solidRectangle 10 5)
 
+roundTo :: Int -> Double -> Double
+roundTo n x = fromIntegral (truncate $ x * 10^n) / 10^n
+
+drawActiveBoost :: [Boost] -> Picture
+drawActiveBoost [] = blank
+drawActiveBoost [b] = colored (color b) (drawNumber $ roundTo 2 $ duration b)
+drawActiveBoost (b:_) = drawActiveBoost [b]
+
+drawActiveBoosts :: [Boost] -> Picture
+drawActiveBoosts boosts =
+    translated (screenWidth/2 -3) (-screenHeight/2 +1)
+        (slowMotionDuration
+        <> immunityDuration)
+    where
+        slowMotionBoosts = maximumByDurationList [ b | b@(SlowMotion {}) <- boosts ]
+        immunityBoosts = maximumByDurationList [ b | b@(Immunity {}) <- boosts ]
+
+        slowMotionDuration = drawActiveBoost slowMotionBoosts
+        immunityDuration =
+            translated 0 1 (drawActiveBoost immunityBoosts)
 
 drawGameObjects :: (GameObject g) => Double -> [g] -> Picture
 drawGameObjects offset objects=  pictures $ map draw  onScreenObjects
@@ -43,7 +64,11 @@ drawPlayer Player {y = y, hitBoxSize = playerSize} immunity state =
             _ -> playerPicture
 
 drawScore :: Int -> Picture
-drawScore score = translated (-screenWidth/2+ 1) (-screenHeight/2 + 1) (lettering (T.pack (show score)))
+drawScore score = translated (-screenWidth/2+ 1) (-screenHeight/2 + 1) (drawNumber score)
+
+drawNumber :: Show a => a -> Picture
+drawNumber x = lettering $ T.pack $ show x
+
 
 drawDebug :: World -> Picture
 drawDebug World{speed=speed',
@@ -54,8 +79,8 @@ drawDebug World{speed=speed',
                 player = Player{y=playerY, hitBoxSize=playerSize}} =
   colored red (rectangle screenWidth screenHeight)<>
   colored blue (solidCircle 0.1)<>
-  translated 0 (-7) (lettering (T.pack (show speed'))) <>
-  translated 0 (-8) (lettering (T.pack (show currentSpeed'))) <>
-  translated (-3) (-9) (lettering (T.pack (show (length activeBoosts')))) <>
-  translated 0 (-9) (lettering (T.pack (show (length $ takeWhile (onScreen offset') boosts'))))<>
+  translated 0 (-7) (drawNumber $ roundTo 3 speed') <>
+  translated 0 (-8) (drawNumber $ roundTo 3 currentSpeed') <>
+  translated (-3) (-9) (drawNumber $ length activeBoosts') <>
+  translated 0 (-9) (drawNumber $ length $ takeWhile (onScreen offset') boosts')<>
   translated  playerShift  playerY (rectangle playerSize playerSize)
