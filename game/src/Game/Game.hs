@@ -48,19 +48,23 @@ generatePosition gen (startX, endX, startY, endY) = (x, y)
     (x, _) = randomR (startX, endX) gen
     (y, _) = randomR (startY, endY) gen
 
-randomGens :: StdGen -> [StdGen]
-randomGens = unfoldr (Just . split)
+randomGens :: StdGen -> ([StdGen], StdGen)
+randomGens gen = (unfoldr (Just . split) g1, g2)
+  where
+    (g1, g2) = split gen
 
 sampleBoosts :: StdGen -> [Gate] -> [Boost]
 sampleBoosts gen gates = boosts
   where
     radius' = 0.25
-    generators = randomGens gen
-    spawnFields = zipWith3 (getSpawnField radius') generators gates (drop 1 gates)
-    (xs, ys) = unzip (zipWith generatePosition generators spawnFields)
+    (coordGenerators, gen2) = randomGens gen
+    spawnFields = zipWith3 (getSpawnField radius') spawnFieldsGenerators gates (drop 1 gates)
+    (spawnFieldsGenerators, gen3) = randomGens gen2
+    (xs, ys) = unzip (zipWith generatePosition coordGenerators spawnFields)
 
+    (hiddenGenerators, gen4) = randomGens gen3
     hidden' :: [Bool]
-    hidden' = map ((> boostOccurrenceProbability) . fst . randomR (0, 1)) generators
+    hidden' = map ((> boostOccurrenceProbability) . fst . randomR (0, 1)) hiddenGenerators
 
     slowMotionBoosts =
         zipWith6
@@ -87,7 +91,7 @@ sampleBoosts gen gates = boosts
             xs
             ys
             (repeat radius')
-            (repeat 3)
+            (repeat 3.5)
             hidden'
             (repeat 2)
             (repeat 18)
@@ -101,8 +105,9 @@ sampleBoosts gen gates = boosts
         | p < 0.66 = b2
         | otherwise = b3
 
+    (boostProbabilitiesGens, _) = randomGens gen4
     probabilities :: [Double]
-    probabilities = map (fst . randomR (0, 1)) generators
+    probabilities = map (fst . randomR (0.0, 1.0)) boostProbabilitiesGens
 
     boosts = zipWith chooseBoost possibleBoosts probabilities
 
@@ -112,12 +117,13 @@ chooseBoost' (_, b) _ = b
 
 sampleGates :: StdGen -> [Gate]
 sampleGates gen =
-    zipWith4
+    zipWith5
         Gate
         widths
         xs
         ys
         heights
+        isTypeChangers
   where
     (g1', g2) = split gen
     (g1, g3) = split g1'
@@ -125,9 +131,11 @@ sampleGates gen =
     heights = randomRs (5.0, 10.0) g3
     ys = randomRs (-3.0, 3.0) g2
     xs = [gatesShift, gatesShift + gatesSpacing ..]
+    typeChangerProbabilities = randomRs (0.0, 1.0) g2
+    isTypeChangers = map (<= typeChangerProbability) typeChangerProbabilities
 
 generateWorld :: WorldState -> Bool -> StdGen -> World
-generateWorld ws debug g = World (-2) gates boosts [] 0 3 3 (Player 0 0 1) 0 ws gen False False debug
+generateWorld ws debug g = World (-2) gates boosts [] 0 startWorldSpeed startWorldSpeed (Player 0 0 1 0) 0 ws gen False False debug Pushing
   where
     (gen, _) = split g
     gates = sampleGates gen
@@ -144,19 +152,30 @@ handleEvent e world@World{state = Progress} = handleProgressEvent e world
 handleEvent e world@World{state = Fail} = handleFailEvent e world
 handleEvent e world@World{state = Idle} = handleIdleEvent e world
 
-handleProgressEvent :: Event -> World -> World
-handleProgressEvent (TimePassing dt) world = updateWorld dt world
-handleProgressEvent (KeyPress " ") world@World{..}
+handlePushingAction :: Event -> World -> World
+handlePushingAction (KeyPress " ") world@World{..}
     | spacePressed = updateWorld 0 world
     | otherwise =
         updateWorld
             0
             world
-                { player = player{velocity = pushAcceleration}
+                { player = player{velocity = pushAcceleration, acceleration = gravity}
                 , spacePressed = True
                 }
-handleProgressEvent (KeyRelease " ") world = updateWorld 0 (world{spacePressed = False})
-handleProgressEvent _ world = world
+handlePushingAction (KeyRelease " ") world = updateWorld 0 (world{spacePressed = False})
+handlePushingAction _ world = world
+
+handleAccelerationAction :: Event -> World -> World
+handleAccelerationAction (KeyPress " ") world@World{..} =
+    updateWorld 0 world{player = player{acceleration = smoothAcceleration}}
+handleAccelerationAction (KeyRelease " ") world@World{..} =
+    updateWorld 0 world{player = player{acceleration = gravity}}
+handleAccelerationAction _ world = world
+
+handleProgressEvent :: Event -> World -> World
+handleProgressEvent (TimePassing dt) world = updateWorld dt world
+handleProgressEvent e world@World{gameType = Pushing} = handlePushingAction e world
+handleProgressEvent e world@World{gameType = Holding} = handleAccelerationAction e world
 
 handleFailEvent :: Event -> World -> World
 handleFailEvent (TimePassing dt) world = updateWorld dt world
@@ -192,10 +211,14 @@ addActiveBoosts world@World{offset = globalOffset, boosts = (boost : restBoosts)
     newBoost = if isNewBoostTaken then setHidden boost True else boost
     newActiveBoosts' = if isNewBoostTaken then newBoost : newActiveBoosts else newActiveBoosts
 
+toggleGameType :: GameType -> GameType
+toggleGameType Pushing = Holding
+toggleGameType Holding = Pushing
+
 updateWorld :: Double -> World -> World
-updateWorld dt world@World{state = Fail, player = player} = newStaticWorld
+updateWorld dt world@World{gameType = gameType, state = Fail, player = player} = newStaticWorld
   where
-    newFailedPlayer = updatePlayer dt player
+    newFailedPlayer = updatePlayer gameType dt player
     newStaticWorld = world{currentSpeed = 0, player = newFailedPlayer}
 updateWorld dt world@World{..} =
     newWorldWithBoosts{activeBoosts = filterBestActiveBoosts finalActiveBoosts'}
@@ -204,10 +227,12 @@ updateWorld dt world@World{..} =
     newSpeed = min (speed + worldSpeedIncrease) maxWorldSpeed
     newWorld = world{time = time + dt, offset = newOffset, speed = newSpeed}
     screenGates = takeWhile (onScreen offset) gates
-    scoreImprovement = calculateScoreImprovement offset newOffset screenGates
+    scoreImprovement = passedGates offset newOffset screenGates
+    hasGameTypeChanged = odd (passedTypeChangers offset newOffset screenGates)
     newState = if isFailed newWorld then Fail else Progress
     newPlayer =
         updatePlayer
+            gameType
             dt
             ( case newState of
                 Fail -> player{velocity = pushAcceleration / 2}
@@ -226,22 +251,30 @@ updateWorld dt world@World{..} =
             , activeBoosts = newActiveBoosts
             , score = score + scoreImprovement
             , player = newPlayer
+            , gameType = if hasGameTypeChanged then toggleGameType gameType else gameType
             }
 
     newWorldWithBoosts@World{activeBoosts = finalActiveBoosts'} = applyBoosts $ addActiveBoosts newWorldWithPlayer
 
-calculateScoreImprovement :: Double -> Double -> [Gate] -> Int
-calculateScoreImprovement oldOffset newOffset gates =
-    length (filter (\Gate{gateOffsetX = offset'} -> oldOffset + offset' > 0 && offset' + newOffset <= 0) gates)
+passedTypeChangers :: Double -> Double -> [Gate] -> Int
+passedTypeChangers oldOffset newOffset = passedGates oldOffset newOffset . filter isTypeChanger
+
+passedGates :: Double -> Double -> [Gate] -> Int
+passedGates oldOffset newOffset gates =
+    length (filter (\Gate{gateOffsetX = offset'} -> oldOffset + offset' - playerShift > 0 && offset' + newOffset - playerShift <= 0) gates)
 
 isFailed :: World -> Bool
 isFailed world@World{gates = gates, offset = offset} = any (isCollided world) (takeWhile (onScreen offset) gates)
 
-updatePlayer :: Double -> Player -> Player
+updatePlayer :: GameType -> Double -> Player -> Player
 updatePlayer
+    gameType
     dt
-    player@Player{velocity = velocity, y = y} =
+    player@Player{acceleration = acceleration', velocity = velocity, y = y} =
         player{velocity = newVelocity, y = newY}
       where
-        newVelocity = velocity + dt * gravity
+        totalAcceleration = case gameType of
+            Pushing -> gravity
+            Holding -> acceleration'
+        newVelocity = velocity + dt * totalAcceleration
         newY = max (y + velocity * dt) (-12)

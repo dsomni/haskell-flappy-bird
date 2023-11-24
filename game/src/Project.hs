@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Project where
 
-import           CodeWorld
+import CodeWorld ()
 
 -- | Default entry point.
 run :: IO ()

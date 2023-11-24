@@ -17,6 +17,10 @@ gravity = -16
 pushAcceleration :: Double
 pushAcceleration = 7
 
+-- Acceleration after pressing <space>
+smoothAcceleration :: Double
+smoothAcceleration = (-gravity) * 1.5
+
 -- Position from where start building obstacles
 gatesShift :: Double
 gatesShift = 2.0
@@ -29,10 +33,13 @@ gatesSpacing :: Double
 gatesSpacing = 6.0
 
 maxWorldSpeed :: Double
-maxWorldSpeed = 5
+maxWorldSpeed = 7
+
+startWorldSpeed :: Double
+startWorldSpeed = 3.5
 
 worldSpeedIncrease :: Double
-worldSpeedIncrease = 0.003
+worldSpeedIncrease = 0.002
 
 -- Some collisions tolerance or better UX
 collisionEpsilon :: Double
@@ -40,8 +47,12 @@ collisionEpsilon = 0.05
 
 -- How often player meets boosts
 boostOccurrenceProbability :: Double
-boostOccurrenceProbability = 1
+boostOccurrenceProbability = 0.7
 
 -- How boost spawns inside gate (between tubes)
 boostInsideGateProbability :: Double
 boostInsideGateProbability = 0.5
+
+-- How often spawn typeChanger gates
+typeChangerProbability :: Double
+typeChangerProbability = 0.25

@@ -10,6 +10,7 @@ drawWorld :: World -> Picture
 drawWorld world@World{..} =
     maybeDrawMenu state
         <> drawScore score
+        <> drawGameType gameType
         <> drawActiveBoosts activeBoosts
         <> debugInfo
         <> translated playerShift 0 (drawPlayer player immunity state)
@@ -25,6 +26,13 @@ drawWorld world@World{..} =
 
 roundTo :: Int -> Double -> Double
 roundTo n x = fromIntegral (truncate $ x * 10 ^ n) / 10 ^ n
+
+drawGameType :: GameType -> Picture
+drawGameType gameType = translated 0 (screenHeight / 2 - 1) (lettering text)
+  where
+    text = case gameType of
+        Pushing -> "PUSH!"
+        Holding -> "HOLD!"
 
 drawActiveBoost :: [Boost] -> Picture
 drawActiveBoost [] = blank

@@ -6,6 +6,8 @@ import CodeWorld
 import Game.Constants
 import System.Random (StdGen)
 
+data GameType = Pushing | Holding
+
 data World = World
     { time :: Double
     , gates :: [Gate]
@@ -21,6 +23,7 @@ data World = World
     , spacePressed :: Bool
     , immunity :: Bool
     , debugMode :: Bool
+    , gameType :: GameType
     }
 
 data WorldState = Progress | Fail | Idle
@@ -29,6 +32,7 @@ data Player = Player
     { velocity :: Double
     , y :: Double
     , hitBoxSize :: Double
+    , acceleration :: Double
     }
 
 data Gate = Gate
@@ -36,6 +40,7 @@ data Gate = Gate
     , gateOffsetX :: Double
     , gateOffsetY :: Double
     , gateHeight :: Double
+    , isTypeChanger :: Bool
     }
     deriving (Show)
 
@@ -138,16 +143,19 @@ instance GameObject Gate where
             playerR = playerSize / 2
             playerX = -worldOffset + playerShift
 
-    draw (Gate width offsetX' offsetY' height) = top <> bottom
+    draw (Gate width offsetX' offsetY' height isTypeChanger') = translated offsetX' 0 (top <> middle <> bottom)
       where
         top =
             colored
                 green
-                (translated offsetX' (offsetY' + screenHeight / 2 + height / 2) (solidRectangle width screenHeight))
+                (translated 0 (offsetY' + screenHeight / 2 + height / 2) (solidRectangle width screenHeight))
         bottom =
             colored
                 green
-                (translated offsetX' (offsetY' - screenHeight / 2 - height / 2) (solidRectangle width screenHeight))
+                (translated 0 (offsetY' - screenHeight / 2 - height / 2) (solidRectangle width screenHeight))
+
+        middlePicture = colored (translucent pink) (translated 0 offsetY' (solidRectangle width height))
+        middle = if isTypeChanger' then middlePicture else blank
 
 instance GameObject Boost where
     offsetX = boostOffsetX
