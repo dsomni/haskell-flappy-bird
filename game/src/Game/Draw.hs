@@ -38,14 +38,18 @@ drawActiveBoosts boosts =
         (-screenHeight / 2 + 1)
         ( slowMotionDuration
             <> immunityDuration
+            <> forcingDuration
         )
   where
     slowMotionBoosts = maximumByDurationList [b | b@(SlowMotion{}) <- boosts]
     immunityBoosts = maximumByDurationList [b | b@(Immunity{}) <- boosts]
+    forcingBoosts = maximumByDurationList [b | b@(Forcing{}) <- boosts]
 
     slowMotionDuration = drawActiveBoost slowMotionBoosts
     immunityDuration =
         translated 0 1 (drawActiveBoost immunityBoosts)
+    forcingDuration =
+        translated 0 2 (drawActiveBoost forcingBoosts)
 
 drawGameObjects :: (GameObject g) => Double -> [g] -> Picture
 drawGameObjects offset objects = pictures $ map draw onScreenObjects

@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module Game.Data where
 
 import CodeWorld
@@ -53,6 +55,15 @@ data Boost
         , boostDuration :: Double
         , boostHidden :: Bool
         }
+    | Forcing
+        { boostOffsetX :: Double
+        , boostOffsetY :: Double
+        , boostRadius :: Double
+        , boostDuration :: Double
+        , boostHidden :: Bool
+        , forcingDuration :: Double
+        , forcingSpeed :: Double
+        }
 
 -- * Boost Object
 class GameObject b => BoostObject b where
@@ -60,7 +71,7 @@ class GameObject b => BoostObject b where
     duration :: b -> Double
     hidden :: b -> Bool
     setRadius :: b -> Double -> b
-    setDuration :: b -> Double -> b
+    decreaseDuration :: b -> Double -> b
     setHidden :: b -> Bool -> b
     color :: b -> Color
     apply :: World -> b -> World
@@ -73,12 +84,23 @@ instance BoostObject Boost where
     duration = boostDuration
     hidden = boostHidden
     setRadius b newR = b{boostRadius = newR}
-    setDuration b newD = b{boostDuration = newD}
+
+    decreaseDuration b@Forcing{boostDuration = boostD, forcingDuration = forcingD} d' =
+        b
+            { boostDuration = boostD - d'
+            , forcingDuration = forcingD - d'
+            }
+    decreaseDuration b d' = b{boostDuration = duration b - d'}
+    setHidden :: Boost -> Bool -> Boost
     setHidden b newHidden = b{boostHidden = newHidden}
     color SlowMotion{} = red
     color Immunity{} = blue
+    color Forcing{} = purple
     apply w@World{currentSpeed = speed'} SlowMotion{speedCoefficient = ratio} = w{currentSpeed = ratio * speed'}
     apply w Immunity{} = w{immunity = True}
+    apply w@World{currentSpeed = s} Forcing{forcingDuration = d, forcingSpeed = s'} = w{immunity = True, currentSpeed = newSpeed}
+      where
+        newSpeed = if d > 0 then s' else s
     maximumDuration [] = -1
     maximumDuration [b] = duration b
     maximumDuration (b : bs) = max (duration b) (maximumDuration bs)

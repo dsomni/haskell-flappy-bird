@@ -81,17 +81,30 @@ sampleBoosts gen gates = boosts
             (repeat 4)
             hidden'
 
-    possibleBoosts :: [(Boost, Boost)]
-    possibleBoosts = zip slowMotionBoosts immunityBoosts
+    forcingBoosts =
+        zipWith7
+            Forcing
+            xs
+            ys
+            (repeat radius')
+            (repeat 3)
+            hidden'
+            (repeat 2)
+            (repeat 18)
 
-    chooseBoost :: (Boost, Boost) -> Int -> Boost
-    chooseBoost (b, _) 0 = b
-    chooseBoost (_, b) _ = b
+    possibleBoosts :: [(Boost, Boost, Boost)]
+    possibleBoosts = zip3 slowMotionBoosts immunityBoosts forcingBoosts
 
-    indices :: [Int]
-    indices = map (fst . randomR (0, 1)) generators
+    chooseBoost :: (Boost, Boost, Boost) -> Double -> Boost
+    chooseBoost (b1, b2, b3) p
+        | p < 0.33 = b1
+        | p < 0.66 = b2
+        | otherwise = b3
 
-    boosts = zipWith chooseBoost possibleBoosts indices
+    probabilities :: [Double]
+    probabilities = map (fst . randomR (0, 1)) generators
+
+    boosts = zipWith chooseBoost possibleBoosts probabilities
 
 chooseBoost' :: (Int, Int) -> Int -> Int
 chooseBoost' (b, _) 0 = b
@@ -162,10 +175,11 @@ applyBoosts world@World{activeBoosts = boost : boosts} = apply (newWorld{activeB
     newWorld = applyBoosts world{activeBoosts = boosts}
 
 filterBestActiveBoosts :: [Boost] -> [Boost]
-filterBestActiveBoosts boosts = slowMotionBoosts ++ immunityBoosts
+filterBestActiveBoosts boosts = slowMotionBoosts ++ immunityBoosts ++ forcingBoosts
   where
     slowMotionBoosts = maximumByDurationList [b | b@(SlowMotion{}) <- boosts]
     immunityBoosts = maximumByDurationList [b | b@(Immunity{}) <- boosts]
+    forcingBoosts = maximumByDurationList [b | b@(Forcing{}) <- boosts]
 
 addActiveBoosts :: World -> World
 addActiveBoosts world@World{boosts = []} = world
@@ -200,7 +214,7 @@ updateWorld dt world@World{..} =
                 _ -> player
             )
 
-    newActiveBoosts = filter (\b -> duration b > 0) $ map (\b -> setDuration b (duration b - dt)) activeBoosts
+    newActiveBoosts = filter (\b -> duration b > 0) $ map (`decreaseDuration` dt) activeBoosts
 
     newWorldWithPlayer =
         newWorld
