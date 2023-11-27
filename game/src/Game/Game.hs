@@ -1,3 +1,6 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Game.Game where
 
 import CodeWorld
