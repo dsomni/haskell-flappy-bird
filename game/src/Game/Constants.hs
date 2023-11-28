@@ -1,5 +1,7 @@
 module Game.Constants where
 
+import CodeWorld
+
 -- * System constants
 
 screenWidth :: Double
@@ -54,5 +56,15 @@ boostInsideGateProbability :: Double
 boostInsideGateProbability = 0.5
 
 -- How often spawn typeChanger gates
-typeChangerProbability :: Double
-typeChangerProbability = 0.25
+typeChangerGateProbability :: Double
+typeChangerGateProbability = 0.1
+
+-- How often spawn inverseGravity gates
+inverseGravityGateProbability :: Double
+inverseGravityGateProbability = 0.2
+
+menuColor :: Color
+menuColor = light gray
+
+boostDefaultRadius :: Double
+boostDefaultRadius = 0.5

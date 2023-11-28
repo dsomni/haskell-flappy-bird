@@ -56,9 +56,8 @@ randomGens gen = (unfoldr (Just . split) g1, g2)
 sampleBoosts :: StdGen -> [Gate] -> [Boost]
 sampleBoosts gen gates = boosts
   where
-    radius' = 0.25
     (coordGenerators, gen2) = randomGens gen
-    spawnFields = zipWith3 (getSpawnField radius') spawnFieldsGenerators gates (drop 1 gates)
+    spawnFields = zipWith3 (getSpawnField boostDefaultRadius) spawnFieldsGenerators gates (drop 1 gates)
     (spawnFieldsGenerators, gen3) = randomGens gen2
     (xs, ys) = unzip (zipWith generatePosition coordGenerators spawnFields)
 
@@ -71,7 +70,7 @@ sampleBoosts gen gates = boosts
             SlowMotion
             xs
             ys
-            (repeat radius')
+            (repeat boostDefaultRadius)
             (repeat 0.8)
             (repeat 5)
             hidden'
@@ -81,7 +80,7 @@ sampleBoosts gen gates = boosts
             Immunity
             xs
             ys
-            (repeat radius')
+            (repeat boostDefaultRadius)
             (repeat 4)
             hidden'
 
@@ -90,7 +89,7 @@ sampleBoosts gen gates = boosts
             Forcing
             xs
             ys
-            (repeat radius')
+            (repeat boostDefaultRadius)
             (repeat 3.5)
             hidden'
             (repeat 2)
@@ -123,19 +122,30 @@ sampleGates gen =
         xs
         ys
         heights
-        isTypeChangers
+        gateTypes
   where
     (g1', g2) = split gen
     (g1, g3) = split g1'
+    (g4, _) = split g1
     widths = randomRs (2.0, 3.0) g1
     heights = randomRs (5.0, 10.0) g3
     ys = randomRs (-3.0, 3.0) g2
     xs = [gatesShift, gatesShift + gatesSpacing ..]
-    typeChangerProbabilities = randomRs (0.0, 1.0) g2
-    isTypeChangers = map (<= typeChangerProbability) typeChangerProbabilities
+
+    (typeProbabilitiesGen, _) = randomGens g4
+    probabilities :: [Double]
+    probabilities = map (fst . randomR (0.0, 1.0)) typeProbabilitiesGen
+
+    chooseType :: Double -> GateType
+    chooseType p
+        | p <= typeChangerGateProbability = GameTypeChangerGate
+        | p <= (typeChangerGateProbability + inverseGravityGateProbability) = GravityInverseGate
+        | otherwise = OrdinaryGate
+
+    gateTypes = map chooseType probabilities
 
 generateWorld :: WorldState -> Bool -> StdGen -> World
-generateWorld ws debug g = World (-2) gates boosts [] 0 startWorldSpeed startWorldSpeed (Player 0 0 1 0) 0 ws gen False False debug Pushing
+generateWorld ws debug g = World (-2) gates boosts [] 0 startWorldSpeed startWorldSpeed (Player 0 0 1 0) 0 ws gen False False debug Pushing False
   where
     (gen, _) = split g
     gates = sampleGates gen
@@ -159,9 +169,12 @@ handlePushingAction (KeyPress " ") world@World{..}
         updateWorld
             0
             world
-                { player = player{velocity = pushAcceleration, acceleration = gravity}
+                { player = player{velocity = newVelocity, acceleration = newAcceleration}
                 , spacePressed = True
                 }
+  where
+    newVelocity = if inverseGravity then (-pushAcceleration) else pushAcceleration
+    newAcceleration = if inverseGravity then (-gravity) else gravity
 handlePushingAction (KeyRelease " ") world = updateWorld 0 (world{spacePressed = False})
 handlePushingAction _ world = world
 
@@ -216,9 +229,9 @@ toggleGameType Pushing = Holding
 toggleGameType Holding = Pushing
 
 updateWorld :: Double -> World -> World
-updateWorld dt world@World{gameType = gameType, state = Fail, player = player} = newStaticWorld
+updateWorld dt world@World{state = Fail, player = player} = newStaticWorld
   where
-    newFailedPlayer = updatePlayer gameType dt player
+    newFailedPlayer = updatePlayer False Pushing dt player
     newStaticWorld = world{currentSpeed = 0, player = newFailedPlayer}
 updateWorld dt world@World{..} =
     newWorldWithBoosts{activeBoosts = filterBestActiveBoosts finalActiveBoosts'}
@@ -228,16 +241,12 @@ updateWorld dt world@World{..} =
     newWorld = world{time = time + dt, offset = newOffset, speed = newSpeed}
     screenGates = takeWhile (onScreen offset) gates
     scoreImprovement = passedGates offset newOffset screenGates
-    hasGameTypeChanged = odd (passedTypeChangers offset newOffset screenGates)
+    hasGameTypeChanged = odd (passedGameTypeChangers offset newOffset screenGates)
+    hasGravityChanged = odd (passedGravityInverse offset newOffset screenGates)
     newState = if isFailed newWorld then Fail else Progress
-    newPlayer =
-        updatePlayer
-            gameType
-            dt
-            ( case newState of
-                Fail -> player{velocity = pushAcceleration / 2}
-                _ -> player
-            )
+    newPlayer = case newState of
+        Fail -> updatePlayer False Pushing dt player{velocity = pushAcceleration / 2}
+        _ -> updatePlayer inverseGravity gameType dt player
 
     newActiveBoosts = filter (\b -> duration b > 0) $ map (`decreaseDuration` dt) activeBoosts
 
@@ -252,12 +261,24 @@ updateWorld dt world@World{..} =
             , score = score + scoreImprovement
             , player = newPlayer
             , gameType = if hasGameTypeChanged then toggleGameType gameType else gameType
+            , inverseGravity = if hasGravityChanged then not inverseGravity else inverseGravity
             }
 
     newWorldWithBoosts@World{activeBoosts = finalActiveBoosts'} = applyBoosts $ addActiveBoosts newWorldWithPlayer
 
-passedTypeChangers :: Double -> Double -> [Gate] -> Int
-passedTypeChangers oldOffset newOffset = passedGates oldOffset newOffset . filter isTypeChanger
+passedGameTypeChangers :: Double -> Double -> [Gate] -> Int
+passedGameTypeChangers oldOffset newOffset = passedGates oldOffset newOffset . filter filterFunction
+  where
+    filterFunction Gate{gateType = gateType'} = case gateType' of
+        GameTypeChangerGate -> True
+        _ -> False
+
+passedGravityInverse :: Double -> Double -> [Gate] -> Int
+passedGravityInverse oldOffset newOffset = passedGates oldOffset newOffset . filter filterFunction
+  where
+    filterFunction Gate{gateType = gateType'} = case gateType' of
+        GravityInverseGate -> True
+        _ -> False
 
 passedGates :: Double -> Double -> [Gate] -> Int
 passedGates oldOffset newOffset gates =
@@ -266,15 +287,16 @@ passedGates oldOffset newOffset gates =
 isFailed :: World -> Bool
 isFailed world@World{gates = gates, offset = offset} = any (isCollided world) (takeWhile (onScreen offset) gates)
 
-updatePlayer :: GameType -> Double -> Player -> Player
+updatePlayer :: Bool -> GameType -> Double -> Player -> Player
 updatePlayer
+    inverseGravity
     gameType
     dt
     player@Player{acceleration = acceleration', velocity = velocity, y = y} =
         player{velocity = newVelocity, y = newY}
       where
         totalAcceleration = case gameType of
-            Pushing -> gravity
-            Holding -> acceleration'
+            Pushing -> if inverseGravity then (-gravity) else gravity
+            Holding -> if inverseGravity then (-acceleration') else acceleration'
         newVelocity = velocity + dt * totalAcceleration
-        newY = max (y + velocity * dt) (-12)
+        newY = min (max (y + velocity * dt) (-15)) 15

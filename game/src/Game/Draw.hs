@@ -7,22 +7,22 @@ import Game.Data
 import Game.Utils
 
 drawWorld :: World -> Picture
-drawWorld world@World {..} =
-  maybeDrawMenu state score
-    <> drawScore score
-    <> drawGameType gameType
-    <> drawActiveBoosts activeBoosts
-    <> debugInfo
-    <> translated playerShift 0 (drawPlayer player immunity state)
-    <> translated offset 0 (drawGameObjects offset gates)
-    <> translated offset 0 (drawBoosts offset boosts)
+drawWorld world@World{..} =
+    maybeDrawMenu state score
+        <> drawScore score
+        <> drawGameType gameType
+        <> drawActiveBoosts activeBoosts
+        <> debugInfo
+        <> translated playerShift 0 (drawPlayer player immunity inverseGravity state)
+        <> translated offset 0 (drawGameObjects offset gates)
+        <> translated offset 0 (drawBoosts offset boosts)
   where
     debugInfo = if debugMode then drawDebug world else blank
 
     maybeDrawMenu :: WorldState -> Int -> Picture
     maybeDrawMenu Progress _ = blank
-    maybeDrawMenu Fail score = translated 0 1 (lettering "Game over") <> lettering ("Your score: " <> T.pack (show score)) <> translated 0 (-1) (lettering "Press space to try again") <> colored gray (solidRectangle 10 5)
-    maybeDrawMenu Idle _ = lettering "Press space to start" <> colored gray (solidRectangle 10 5)
+    maybeDrawMenu Fail score' = translated 0 1 (colored red $ lettering "GAME OVER") <> lettering ("Your score: " <> T.pack (show score')) <> translated 0 (-1.2) (lettering "Press space to try again") <> colored menuColor (solidRectangle 10 5)
+    maybeDrawMenu Idle _ = lettering "Press space to start" <> colored menuColor (solidRectangle 10 5)
 
 roundTo :: Int -> Double -> Double
 roundTo n x = fromIntegral (truncate $ x * 10 ^ n) / 10 ^ n
@@ -31,8 +31,8 @@ drawGameType :: GameType -> Picture
 drawGameType gameType = translated 0 (screenHeight / 2 - 1) (lettering text)
   where
     text = case gameType of
-      Pushing -> "PUSH!"
-      Holding -> "HOLD!"
+        Pushing -> "PUSH!"
+        Holding -> "HOLD!"
 
 drawActiveBoost :: [Boost] -> Picture
 drawActiveBoost [] = blank
@@ -41,23 +41,23 @@ drawActiveBoost (b : _) = drawActiveBoost [b]
 
 drawActiveBoosts :: [Boost] -> Picture
 drawActiveBoosts boosts =
-  translated
-    (screenWidth / 2 - 3)
-    (-screenHeight / 2 + 1)
-    ( slowMotionDuration
-        <> immunityDuration
-        <> forcingDuration
-    )
+    translated
+        (screenWidth / 2 - 3)
+        (-screenHeight / 2 + 1)
+        ( slowMotionDuration
+            <> immunityDuration
+            <> forcingDuration
+        )
   where
-    slowMotionBoosts = maximumByDurationList [b | b@(SlowMotion {}) <- boosts]
-    immunityBoosts = maximumByDurationList [b | b@(Immunity {}) <- boosts]
-    forcingBoosts = maximumByDurationList [b | b@(Forcing {}) <- boosts]
+    slowMotionBoosts = maximumByDurationList [b | b@(SlowMotion{}) <- boosts]
+    immunityBoosts = maximumByDurationList [b | b@(Immunity{}) <- boosts]
+    forcingBoosts = maximumByDurationList [b | b@(Forcing{}) <- boosts]
 
     slowMotionDuration = drawActiveBoost slowMotionBoosts
     immunityDuration =
-      translated 0 1 (drawActiveBoost immunityBoosts)
+        translated 0 1 (drawActiveBoost immunityBoosts)
     forcingDuration =
-      translated 0 2 (drawActiveBoost forcingBoosts)
+        translated 0 2 (drawActiveBoost forcingBoosts)
 
 drawGameObjects :: (GameObject g) => Double -> [g] -> Picture
 drawGameObjects offset objects = pictures $ map draw onScreenObjects
@@ -67,15 +67,16 @@ drawGameObjects offset objects = pictures $ map draw onScreenObjects
 drawBoosts :: (BoostObject b) => Double -> [b] -> Picture
 drawBoosts offset b = drawGameObjects offset $ filter (not . hidden) b
 
-drawPlayer :: Player -> Bool -> WorldState -> Picture
-drawPlayer Player {y = y, hitBoxSize = playerSize} immunity state =
-  translated 0 y (shield <> maybeDeadPlayerPicture)
+drawPlayer :: Player -> Bool -> Bool -> WorldState -> Picture
+drawPlayer Player{y = y, hitBoxSize = playerSize} immunity inverseGravity state =
+    translated 0 y (shield <> maybeDeadPlayerPicture)
   where
     shield = if immunity then colored (translucent yellow) $ solidCircle playerSize else blank
-    playerPicture = lettering "\x1F6F8"
+    basePlayerPicture = lettering "\x1F6F8"
+    playerPicture = if inverseGravity then reflected 0 basePlayerPicture else basePlayerPicture
     maybeDeadPlayerPicture = case state of
-      Fail -> reflected 0 playerPicture
-      _ -> playerPicture
+        Fail -> reflected 0 playerPicture
+        _ -> playerPicture
 
 drawScore :: Int -> Picture
 drawScore score = translated (-screenWidth / 2 + 1) (-screenHeight / 2 + 1) (drawNumber score)
@@ -85,18 +86,25 @@ drawNumber x = lettering $ T.pack $ show x
 
 drawDebug :: World -> Picture
 drawDebug
-  World
-    { speed = speed',
-      currentSpeed = currentSpeed',
-      activeBoosts = activeBoosts',
-      boosts = boosts',
-      offset = offset',
-      player = Player {y = playerY, hitBoxSize = playerSize}
-    } =
-    colored red (rectangle screenWidth screenHeight)
-      <> colored blue (solidCircle 0.1)
-      <> translated 0 (-7) (drawNumber $ roundTo 3 speed')
-      <> translated 0 (-8) (drawNumber $ roundTo 3 currentSpeed')
-      <> translated (-3) (-9) (drawNumber $ length activeBoosts')
-      <> translated 0 (-9) (drawNumber $ length $ takeWhile (onScreen offset') boosts')
-      <> translated playerShift playerY (rectangle playerSize playerSize)
+    World
+        { speed = speed'
+        , currentSpeed = currentSpeed'
+        , activeBoosts = activeBoosts'
+        , boosts = boosts'
+        , offset = offset'
+        , player = Player{y = playerY, hitBoxSize = playerSize}
+        } =
+        colored red (rectangle screenWidth screenHeight)
+            <> colored blue (solidCircle 0.1)
+            <> translated 0 (-7) (drawNumber $ roundTo 3 speed')
+            <> translated 0 (-8) (drawNumber $ roundTo 3 currentSpeed')
+            <> translated (-3) (-9) (drawNumber $ length activeBoosts')
+            <> translated 0 (-9) (drawNumber $ length $ onScreenBoosts)
+            <> translated playerShift playerY (rectangle playerSize playerSize)
+            <> boostHitBoxes
+      where
+        onScreenBoosts = takeWhile (onScreen offset') (filter (not . hidden) boosts')
+        drawBoostHitBox b = translated (offset' + offsetX b) (offsetY b) (rectangle boostSize boostSize)
+          where
+            boostSize = radius b * 2
+        boostHitBoxes = pictures $ map drawBoostHitBox onScreenBoosts
