@@ -1,0 +1,26 @@
+resolver: lts-7.19
+compiler: ghcjs-0.2.1.9007019_ghc-8.0.1
+compiler-check: match-exact
+
+packages:
+- .
+- location:
+    git: https://github.com/google/codeworld.git
+    commit: 277d0517b25dce60e748ded5782b9cd9bc8d05a8
+  subdirs:
+  - codeworld-game-api
+  - codeworld-prediction
+  
+  extra-dep: true
+
+extra-deps:
+- codeworld-api-0.3.1
+- ghcjs-dom-0.8.0.0
+- ghcjs-dom-jsffi-0.8.0.0
+
+setup-info:
+  ghcjs:
+    source:
+      ghcjs-0.2.1.9007019_ghc-8.0.1:
+        url: http://ghcjs.tolysz.org/ghc-8.0-2017-02-05-lts-7.19-9007019.tar.gz
+        sha1: d2cfc25f9cda32a25a87d9af68891b2186ee52f9

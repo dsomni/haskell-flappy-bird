@@ -1,7 +1,10 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module Game.Draw where
 
 import CodeWorld
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Game.Constants
 import Game.Data
 import Game.Utils
@@ -73,10 +76,10 @@ drawPlayer Player{y = y, hitBoxSize = playerSize} immunity inverseGravity state 
   where
     shield = if immunity then colored (translucent yellow) $ solidCircle playerSize else blank
     basePlayerPicture = lettering "\x1F6F8"
-    playerPicture = if inverseGravity then reflected 0 basePlayerPicture else basePlayerPicture
+    playerPicture = if inverseGravity then rotated 3.14 basePlayerPicture else basePlayerPicture
     maybeDeadPlayerPicture = case state of
-        Fail -> reflected 0 playerPicture
-        _ -> playerPicture
+      Fail -> rotated 3.14 playerPicture
+      _ -> playerPicture
 
 drawScore :: Int -> Picture
 drawScore score = translated (-screenWidth / 2 + 1) (-screenHeight / 2 + 1) (drawNumber score)
