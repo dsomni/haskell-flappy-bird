@@ -16,11 +16,13 @@ RUN cp $(stack path --local-install-root)/bin/leaderboard \
 # DEPLOYMENT IMAGE
 ##############################################################################
 
-FROM alpine:latest
+FROM ubuntu:latest
 
 WORKDIR /app
 
 EXPOSE 8080
+
+RUN apt update && apt install -y libpq-dev
 
 COPY --from=builder /sbin/leaderboard /app/leaderboard
 
