@@ -23,6 +23,7 @@ dependencies:
 - codeworld-api
 - text
 - random
+- http-conduit
 
 library:
   source-dirs: src

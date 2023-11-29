@@ -11,9 +11,29 @@ import Game.Data
 import Game.Draw
 import Game.Utils
 import System.Random
+import qualified Data.Text as T
+import Data.Ord (comparing)
+import GHC.IO.Unsafe (unsafePerformIO)
+import System.Environment (lookupEnv)
+import Data.Maybe (fromMaybe)
+import Network.HTTP.Simple
+import Data.String (fromString)
+
 
 run :: IO ()
 run = newGame
+
+getLeaderBoard :: IO [(T.Text, Int)]
+getLeaderBoard = do
+  maybeLeaderBoardHost <- lookupEnv "LEADER_BOARD_HOST"
+  let leaderBoardHost = fromMaybe defaultLeaderBoardHost maybeLeaderBoardHost
+  response <- httpJSON (fromString leaderBoardHost) :: IO (Response [(T.Text, Int)])
+  pure (getResponseBody response)
+  where
+    defaultLeaderBoardHost = "http://localhost:8080"
+
+sendResultToLeaderBoard :: (T.Text, Int) -> IO (T.Text, Int)
+sendResultToLeaderBoard = return
 
 getSpawnFieldOutside :: Double -> Gate -> Gate -> (Double, Double, Double, Double)
 getSpawnFieldOutside
@@ -147,8 +167,32 @@ sampleGates gen =
 
     gateTypes = map chooseType probabilities
 
-generateWorld :: WorldState -> Bool -> StdGen -> World
-generateWorld ws debug g = World (-2) gates boosts [] 0 startWorldSpeed startWorldSpeed (Player 0 0 1 0) 0 ws gen False False debug Pushing False
+-- generateWorld ws debug g = World (-2) gates boosts [] 0 startWorldSpeed startWorldSpeed (Player 0 0 1 0) 0 ws gen False False debug Pushing False
+generateWorld :: [(T.Text, Int)] -> WorldState -> Bool -> StdGen -> World
+generateWorld leaderBoard ws debug g = World
+    { time = -2
+    , gates = gates
+    , boosts = boosts
+    , activeBoosts = []
+    , offset = 0
+    , speed = startWorldSpeed
+    , currentSpeed = startWorldSpeed
+    , player = Player
+      { velocity = 0
+      , playerY = 0
+      , hitBoxSize = 1
+      , acceleration = 0
+      , name = Nothing }
+    , score = 0
+    , state = ws
+    , generator = gen
+    , spacePressed = debug
+    , immunity = False
+    , debugMode = False
+    , gameType = Pushing
+    , inverseGravity = False
+    , leaderBoard = leaderBoard
+    }
   where
     (gen, _) = split g
     gates = sampleGates gen
@@ -157,7 +201,8 @@ generateWorld ws debug g = World (-2) gates boosts [] 0 startWorldSpeed startWor
 newGame :: IO ()
 newGame = do
     gen <- newStdGen
-    activityOf (generateWorld Idle False gen) handleEvent drawWorld
+    leaderBoard <- getLeaderBoard
+    activityOf (generateWorld leaderBoard Idle False gen) handleEvent drawWorld
 
 handleEvent :: Event -> World -> World
 handleEvent (KeyPress "D") world@World{debugMode = oldDebug} = world{debugMode = not oldDebug}
@@ -195,7 +240,7 @@ handleProgressEvent e world@World{gameType = Holding} = handleAccelerationAction
 
 handleFailEvent :: Event -> World -> World
 handleFailEvent (TimePassing dt) world = updateWorld dt world
-handleFailEvent (KeyPress " ") World{generator = g, debugMode = d} = generateWorld Progress d g
+handleFailEvent (KeyPress " ") World{generator = g, debugMode = d, ..} = generateWorld leaderBoard Progress d g
 handleFailEvent _ world = world
 
 handleIdleEvent :: Event -> World -> World
@@ -246,7 +291,10 @@ updateWorld dt world@World{..} =
     scoreImprovement = passedGates offset newOffset screenGates
     hasGameTypeChanged = odd (passedGameTypeChangers offset newOffset screenGates)
     hasGravityChanged = odd (passedGravityInverse offset newOffset screenGates)
-    newState = if isFailed newWorld then Fail else Progress
+    (newState, newLeaderBoard) = if isFailed newWorld then (Fail, updateLeaderBoard leaderBoard) else (Progress, leaderBoard)
+    updateLeaderBoard lb = case name player of
+        Nothing -> lb
+        Just playerName -> take leaderBoardSize (sortBy (comparing snd) (unsafePerformIO (sendResultToLeaderBoard (playerName, score)) : filter ((/= playerName) . fst) lb))
     newPlayer = case newState of
         Fail -> updatePlayer False Pushing dt player{velocity = pushAcceleration / 2}
         _ -> updatePlayer inverseGravity gameType dt player
@@ -265,6 +313,7 @@ updateWorld dt world@World{..} =
             , player = newPlayer
             , gameType = if hasGameTypeChanged then toggleGameType gameType else gameType
             , inverseGravity = if hasGravityChanged then not inverseGravity else inverseGravity
+            , leaderBoard = newLeaderBoard
             }
 
     newWorldWithBoosts@World{activeBoosts = finalActiveBoosts'} = applyBoosts $ addActiveBoosts newWorldWithPlayer
@@ -295,8 +344,8 @@ updatePlayer
     inverseGravity
     gameType
     dt
-    player@Player{acceleration = acceleration', velocity = velocity, y = y} =
-        player{velocity = newVelocity, y = newY}
+    player@Player{acceleration = acceleration', velocity = velocity, playerY = y} =
+        player{velocity = newVelocity, playerY = newY}
       where
         totalAcceleration = case gameType of
             Pushing -> if inverseGravity then (-gravity) else gravity

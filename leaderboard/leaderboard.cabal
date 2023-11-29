@@ -1,17 +1,17 @@
 cabal-version: 1.24
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
-name:                leaderboard
-version:             0.1.0
-description:         Please see the README on GitHub at <https://github.com/dsomni/haskell-flappy-bird>
-homepage:            https://github.com/dsomni/haskell-flappy-bird#readme
-bug-reports:         https://github.com/dsomni/haskell-flappy-bird/issues
-license:             BSD3
-license-file:        LICENSE
-build-type:          Custom
+name:           leaderboard
+version:        0.1.0
+description:    Please see the README on GitHub at <https://github.com/dsomni/haskell-flappy-bird>
+homepage:       https://github.com/dsomni/haskell-flappy-bird#readme
+bug-reports:    https://github.com/dsomni/haskell-flappy-bird/issues
+license:        BSD3
+license-file:   LICENSE
+build-type:     Custom
 
 source-repository head
   type: git
@@ -25,8 +25,7 @@ custom-setup
 
 library
   exposed-modules:
-      Example
-      Model
+      Leaderboard
   other-modules:
       Paths_leaderboard
   hs-source-dirs:
@@ -38,7 +37,7 @@ library
   ghc-options: -Wall -fno-warn-type-defaults
   build-depends:
       HDBC
-    , HDBC-sqlite3 >=2.3.3.1
+    , HDBC-postgresql >=2.5.0.1
     , aeson
     , base >=4.7 && <5
     , random
@@ -60,7 +59,7 @@ executable leaderboard
   ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HDBC
-    , HDBC-sqlite3 >=2.3.3.1
+    , HDBC-postgresql >=2.5.0.1
     , aeson
     , base >=4.7 && <5
     , leaderboard
@@ -83,7 +82,7 @@ test-suite doctests
   build-depends:
       Glob
     , HDBC
-    , HDBC-sqlite3 >=2.3.3.1
+    , HDBC-postgresql >=2.5.0.1
     , QuickCheck
     , aeson
     , base
@@ -111,7 +110,7 @@ test-suite spec
       hspec-discover:hspec-discover
   build-depends:
       HDBC
-    , HDBC-sqlite3 >=2.3.3.1
+    , HDBC-postgresql >=2.5.0.1
     , aeson
     , base >=4.7 && <5
     , haskell-flappy-bird

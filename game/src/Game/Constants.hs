@@ -68,3 +68,6 @@ menuColor = light gray
 
 boostDefaultRadius :: Double
 boostDefaultRadius = 0.5
+
+leaderBoardSize :: Int
+leaderBoardSize = 5

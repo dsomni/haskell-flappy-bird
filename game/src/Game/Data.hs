@@ -1,11 +1,13 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Game.Data where
 
 import CodeWorld
 import Game.Constants
 import System.Random (StdGen)
+import qualified Data.Text as T
 
 data GameType = Pushing | Holding
 
@@ -26,15 +28,17 @@ data World = World
     , debugMode :: Bool
     , gameType :: GameType
     , inverseGravity :: Bool
+    , leaderBoard :: [(T.Text, Int)]
     }
 
 data WorldState = Progress | Fail | Idle
 
 data Player = Player
     { velocity :: Double
-    , y :: Double
+    , playerY :: Double
     , hitBoxSize :: Double
     , acceleration :: Double
+    , name :: Maybe T.Text
     }
 
 data GateType = OrdinaryGate | GameTypeChangerGate | GravityInverseGate
@@ -125,13 +129,13 @@ class GameObject g where
     draw :: g -> Picture
 
 instance GameObject Gate where
-    offsetX Gate{gateOffsetX = x} = x
-    offsetY Gate{gateOffsetY = y} = y
+    offsetX = gateOffsetX
+    offsetY = gateOffsetY
     isCollided
         World
             { offset = worldOffset
             , immunity = immunity'
-            , player = Player{y = playerY, hitBoxSize = playerSize}
+            , player = Player{hitBoxSize = playerSize, ..}
             }
         Gate{gateOffsetX = x, gateOffsetY = y, gateWidth = width, gateHeight = height}
             | abs playerY > screenHeight / 2 = True -- like face with 'ground'
@@ -167,7 +171,7 @@ instance GameObject Boost where
     offsetX = boostOffsetX
     offsetY = boostOffsetY
     isCollided
-        World{offset = worldOffset, player = Player{y = playerY, hitBoxSize = playerSize}}
+        World{offset = worldOffset, player = Player{playerY = playerY, hitBoxSize = playerSize}}
         b
             -- assume boost is square
             | hidden' = False

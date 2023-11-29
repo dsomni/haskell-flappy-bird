@@ -71,7 +71,7 @@ drawBoosts :: (BoostObject b) => Double -> [b] -> Picture
 drawBoosts offset b = drawGameObjects offset $ filter (not . hidden) b
 
 drawPlayer :: Player -> Bool -> Bool -> WorldState -> Picture
-drawPlayer Player{y = y, hitBoxSize = playerSize} immunity inverseGravity state =
+drawPlayer Player{playerY = y, hitBoxSize = playerSize} immunity inverseGravity state =
     translated 0 y (shield <> maybeDeadPlayerPicture)
   where
     shield = if immunity then colored (translucent yellow) $ solidCircle playerSize else blank
@@ -95,14 +95,14 @@ drawDebug
         , activeBoosts = activeBoosts'
         , boosts = boosts'
         , offset = offset'
-        , player = Player{y = playerY, hitBoxSize = playerSize}
+        , player = Player{playerY = playerY, hitBoxSize = playerSize}
         } =
         colored red (rectangle screenWidth screenHeight)
             <> colored blue (solidCircle 0.1)
             <> translated 0 (-7) (drawNumber $ roundTo 3 speed')
             <> translated 0 (-8) (drawNumber $ roundTo 3 currentSpeed')
             <> translated (-3) (-9) (drawNumber $ length activeBoosts')
-            <> translated 0 (-9) (drawNumber $ length $ onScreenBoosts)
+            <> translated 0 (-9) (drawNumber $ length onScreenBoosts)
             <> translated playerShift playerY (rectangle playerSize playerSize)
             <> boostHitBoxes
       where
