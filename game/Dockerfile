@@ -7,6 +7,11 @@ RUN cp crtbeginS.o crtbeginT.o
 COPY ./ /work
 WORKDIR /work
 
+ARG LEADER_BOARD_HOST
+ENV LEADER_BOARD_HOST="http://localhost:8080"
+
+RUN sed -i -e 's|http://localhost:8080|${LEADER_BOARD_HOST}|g' src/Game/Game.hs
+
 RUN stack build --stack-yaml stack-js.yaml
 RUN cp -r $(stack path --stack-yaml stack-js.yaml --local-install-root)/bin/haskell-flappy-bird.jsexe \
     /sbin/
