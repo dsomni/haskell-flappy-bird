@@ -31,7 +31,8 @@ library
       src
   ghc-options: -Wall -fno-warn-type-defaults
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , codeworld-api
     , http-conduit
     , random
@@ -46,7 +47,8 @@ executable haskell-flappy-bird
       app
   ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , codeworld-api
     , haskell-flappy-bird
     , http-conduit
@@ -63,6 +65,7 @@ test-suite doctests
   build-depends:
       Glob
     , QuickCheck
+    , aeson
     , base
     , codeworld-api
     , doctest
@@ -82,7 +85,8 @@ test-suite spec
       test
   ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , codeworld-api
     , haskell-flappy-bird
     , hspec

@@ -24,6 +24,7 @@ dependencies:
 - text
 - random
 - http-conduit
+- aeson
 
 library:
   source-dirs: src

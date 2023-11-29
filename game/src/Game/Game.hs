@@ -4,11 +4,12 @@
 module Game.Game where
 
 import CodeWorld
+import Data.Aeson
 import Data.List
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import Data.String (fromString)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import GHC.IO.Unsafe (unsafePerformIO)
 import Game.Constants
 import Game.Data
@@ -25,10 +26,18 @@ getLeaderBoard :: IO [(T.Text, Int)]
 getLeaderBoard = do
   maybeLeaderBoardHost <- lookupEnv "LEADER_BOARD_HOST"
   let leaderBoardHost = fromMaybe defaultLeaderBoardHost maybeLeaderBoardHost
-  response <- httpJSON (fromString leaderBoardHost) :: IO (Response [(T.Text, Int)])
-  pure (getResponseBody response)
+  response <- httpJSON (fromString (leaderBoardHost <> "/results"))
+  let responseBody' = getResponseBody response :: [Record]
+  pure $ map (\p -> (playerName p, playerScore p)) responseBody'
   where
     defaultLeaderBoardHost = "http://localhost:8080"
+
+data Record = Record {playerName :: T.Text, playerScore :: Int}
+  deriving (Show)
+
+instance FromJSON Record where
+  parseJSON = withObject "Player" $ \obj ->
+    Record <$> obj .: "name" <*> obj .: "score"
 
 sendResultToLeaderBoard :: (T.Text, Int) -> IO (T.Text, Int)
 sendResultToLeaderBoard = return

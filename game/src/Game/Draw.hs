@@ -24,7 +24,7 @@ drawWorld world@World {..} =
 
     maybeDrawMenu :: WorldState -> Int -> Picture
     maybeDrawMenu Progress _ = blank
-    maybeDrawMenu Fail score' = translated (-5) 0 (translated 0 1 (colored red $ lettering "GAME OVER") <> lettering ("Your score: " <> T.pack (show score')) <> translated 0 (-1.2) (lettering "Press space to try again") <> colored menuColor (solidRectangle 10 5)) <> translated 5 0 (drawLeaderBoard [("Nikita", 1231231), ("Nikita", 1231231), ("Nikita", 1231231), ("Nikita", 1231231)])
+    maybeDrawMenu Fail score' = translated (-5) 0 (translated 0 1 (colored red $ lettering "GAME OVER") <> lettering ("Your score: " <> T.pack (show score')) <> translated 0 (-1.2) (lettering "Press space to try again") <> colored menuColor (solidRectangle 10 5)) <> translated 5 0 (drawLeaderBoard leaderBoard)
     maybeDrawMenu Idle _ = lettering "Press space to start" <> colored menuColor (solidRectangle 10 5)
 
 roundTo :: Int -> Double -> Double
