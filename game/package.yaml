@@ -15,12 +15,6 @@ extra-source-files:
 # common to point users to the README.md file.
 description:         Please see the README on GitHub at <https://github.com/dsomni/haskell-flappy-bird>
 
-custom-setup:
-  dependencies:
-    - base
-    - Cabal
-    - cabal-doctest >=1.0.2 && <1.1
-
 ghc-options:
 - -Wall -fno-warn-type-defaults
 
@@ -29,10 +23,10 @@ dependencies:
 - codeworld-api
 - text
 - random
-
-default-extensions:
-- OverloadedStrings
-- ImportQualifiedPost
+- ghcjs-fetch
+- aeson
+- bytestring
+- ghcjs-base
 
 library:
   source-dirs: src
@@ -59,8 +53,8 @@ tests:
     dependencies:
     - haskell-flappy-bird
     - hspec
-    build-tools:
-    - hspec-discover:hspec-discover
+    # build-tools:
+    # - hspec-discover:hspec-discover
 
   doctests:
     source-dirs: test

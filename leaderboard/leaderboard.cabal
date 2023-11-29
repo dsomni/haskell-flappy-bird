@@ -1,0 +1,126 @@
+cabal-version: 1.24
+
+-- This file has been generated from package.yaml by hpack version 0.35.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           leaderboard
+version:        0.1.0
+description:    Please see the README on GitHub at <https://github.com/dsomni/haskell-flappy-bird>
+homepage:       https://github.com/dsomni/haskell-flappy-bird#readme
+bug-reports:    https://github.com/dsomni/haskell-flappy-bird/issues
+license:        BSD3
+license-file:   LICENSE
+build-type:     Custom
+
+source-repository head
+  type: git
+  location: https://github.com/dsomni/haskell-flappy-bird
+
+custom-setup
+  setup-depends:
+      Cabal
+    , base
+    , cabal-doctest >=1.0.2 && <1.1
+
+library
+  exposed-modules:
+      Leaderboard
+  other-modules:
+      Paths_leaderboard
+  hs-source-dirs:
+      src
+  default-extensions:
+      OverloadedStrings
+      ImportQualifiedPost
+      RecordWildCards
+  ghc-options: -Wall -fno-warn-type-defaults
+  build-depends:
+      HDBC
+    , HDBC-postgresql >=2.5.0.1
+    , aeson
+    , base >=4.7 && <5
+    , bytestring
+    , random
+    , scotty
+    , text
+    , wai
+  default-language: Haskell2010
+
+executable leaderboard
+  main-is: Main.hs
+  other-modules:
+      Paths_leaderboard
+  hs-source-dirs:
+      app
+  default-extensions:
+      OverloadedStrings
+      ImportQualifiedPost
+      RecordWildCards
+  ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      HDBC
+    , HDBC-postgresql >=2.5.0.1
+    , aeson
+    , base >=4.7 && <5
+    , bytestring
+    , leaderboard
+    , random
+    , scotty
+    , text
+    , wai
+  default-language: Haskell2010
+
+test-suite doctests
+  type: exitcode-stdio-1.0
+  main-is: doctests.hs
+  hs-source-dirs:
+      test
+  default-extensions:
+      OverloadedStrings
+      ImportQualifiedPost
+      RecordWildCards
+  ghc-options: -Wall -fno-warn-type-defaults
+  build-depends:
+      Glob
+    , HDBC
+    , HDBC-postgresql >=2.5.0.1
+    , QuickCheck
+    , aeson
+    , base
+    , bytestring
+    , doctest
+    , random
+    , scotty
+    , template-haskell
+    , text
+    , wai
+  default-language: Haskell2010
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_leaderboard
+  hs-source-dirs:
+      test
+  default-extensions:
+      OverloadedStrings
+      ImportQualifiedPost
+      RecordWildCards
+  ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
+  build-tool-depends:
+      hspec-discover:hspec-discover
+  build-depends:
+      HDBC
+    , HDBC-postgresql >=2.5.0.1
+    , aeson
+    , base >=4.7 && <5
+    , bytestring
+    , haskell-flappy-bird
+    , hspec
+    , random
+    , scotty
+    , text
+    , wai
+  default-language: Haskell2010
