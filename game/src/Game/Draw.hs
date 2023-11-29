@@ -4,7 +4,7 @@
 module Game.Draw where
 
 import CodeWorld
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Game.Constants
 import Game.Data
 import Game.Utils

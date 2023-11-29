@@ -31,7 +31,7 @@ data World = World
     , leaderBoard :: [(T.Text, Int)]
     }
 
-data WorldState = Progress | Fail | Idle
+data WorldState = Progress | Fail | Idle | NameInput
 
 data Player = Player
     { velocity :: Double

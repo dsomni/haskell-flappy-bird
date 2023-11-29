@@ -8,7 +8,7 @@ import Data.List
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import Data.String (fromString)
-import Data.Text qualified as T
+import qualified Data.Text as T
 import GHC.IO.Unsafe (unsafePerformIO)
 import Game.Constants
 import Game.Data
@@ -240,6 +240,8 @@ handleProgressEvent e world@World {gameType = Pushing} = handlePushingAction e w
 handleProgressEvent e world@World {gameType = Holding} = handleAccelerationAction e world
 
 handleFailEvent :: Event -> World -> World
+handleFailEvent _ world@World {player = Player {name = Nothing}} = world {state = NameInput}
+handleFailEvent e world@World {state = NameInput} = handleNameEnterEvent e world
 handleFailEvent (TimePassing dt) world = updateWorld dt world
 handleFailEvent (KeyPress " ") World {generator = g, debugMode = d, ..} = generateWorld leaderBoard Progress d g
 handleFailEvent _ world = world
@@ -247,6 +249,12 @@ handleFailEvent _ world = world
 handleIdleEvent :: Event -> World -> World
 handleIdleEvent (KeyPress " ") world = world {state = Progress}
 handleIdleEvent _ world = world
+
+handleNameEnterEvent :: Event -> World -> World
+handleNameEnterEvent (KeyPress "Enter") world = world {state = Fail}
+handleNameEnterEvent (KeyPress char) world@World {player = player@Player {name = name}}
+  | T.length char == 1 = world {player = player {name = name}}
+  | otherwise = world
 
 applyBoosts :: World -> World
 applyBoosts world@World {activeBoosts = []} = world
