@@ -28,7 +28,7 @@ run = newGame
 getLeaderBoard :: IO [(T.Text, Int)]
 getLeaderBoard = do
   host <- leaderBoardHost
-  response <- fetch (Request (fromString (host <> "/results")) defaultRequestOptions)
+  response <- fetch (Request (fromString (host <> "/results")) defaultRequestOptions { reqOptMode = NoCors })
   jsonRecord <- responseText response
   let records = fromMaybe [] (decode (TL.encodeUtf8 (TL.pack (JSS.unpack jsonRecord))))
   pure $ map (\p -> (playerName p, playerScore p)) records
@@ -50,7 +50,7 @@ instance FromJSON Record where
 sendResultToLeaderBoard :: (T.Text, Int) -> IO (T.Text, Int)
 sendResultToLeaderBoard tuple@(name, score) = do
   host <- leaderBoardHost
-  response <- fetch (Request (fromString (host <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score)) defaultRequestOptions)
+  response <- fetch (Request (fromString (host <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score)) defaultRequestOptions { reqOptMode = NoCors })
   _ <- responseText response
   return tuple
 
