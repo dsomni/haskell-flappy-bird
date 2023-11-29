@@ -15,11 +15,11 @@ import Web.Scotty qualified as S
 -- Function to insert data into the database
 insertData :: Connection -> Int -> String -> IO [[SqlValue]]
 insertData conn intParam stringParam =
-  quickQuery conn "INSERT INTO your_table_name (score, name) VALUES (?, ?)" [nToSql intParam, toSql stringParam]
+  quickQuery conn "INSERT INTO leaderboard (score, name) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET score = EXCLUDED.score" [nToSql intParam, toSql stringParam]
 
 getData :: Connection -> IO [[SqlValue]]
 getData conn =
-  quickQuery conn "SELECT * FROM your_table_name ORDER BY score DESC LIMIT 5" []
+  quickQuery conn "SELECT * FROM leaderboard ORDER BY score DESC LIMIT 5" []
 
 -- Your database initialization logic
 initializeDB :: String -> IO Connection
@@ -27,7 +27,7 @@ initializeDB = connectPostgreSQL
 
 createTable :: Connection -> IO Integer
 createTable conn = do
-  let query = "CREATE TABLE IF NOT EXISTS your_table_name (score INTEGER, name TEXT)"
+  let query = "CREATE TABLE IF NOT EXISTS leaderboard (score INTEGER, name TEXT)"
   run conn query []
 
 app :: Connection -> S.ScottyM ()
