@@ -47,7 +47,7 @@ instance FromJSON Record where
 sendResultToLeaderBoard :: (T.Text, Int) -> IO (T.Text, Int)
 sendResultToLeaderBoard tuple@(name, score) = do
   host <- leaderBoardHost
-  _ <- httpBS (fromString (host <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score))
+  _ <- httpLBS (fromString (host <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score))
   return tuple
 
 getSpawnFieldOutside :: Double -> Gate -> Gate -> (Double, Double, Double, Double)
