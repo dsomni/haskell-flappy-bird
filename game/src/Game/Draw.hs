@@ -26,6 +26,11 @@ drawWorld world@World {..} =
     maybeDrawMenu Progress _ = blank
     maybeDrawMenu Fail score' = translated (-5) 0 (translated 0 1 (colored red $ lettering "GAME OVER") <> lettering ("Your score: " <> T.pack (show score')) <> translated 0 (-1.2) (lettering "Press space to try again") <> colored menuColor (solidRectangle 10 5)) <> translated 5 0 (drawLeaderBoard leaderBoard)
     maybeDrawMenu Idle _ = lettering "Press space to start" <> colored menuColor (solidRectangle 10 5)
+    maybeDrawMenu NameInput _ = lettering "NAME INPUT:" <> translated 0 (-1) (maybeDrawName (name player)) <> colored menuColor (solidRectangle 10 5)
+
+maybeDrawName :: Maybe T.Text -> Picture
+maybeDrawName Nothing = lettering "_"
+maybeDrawName (Just text) = lettering (text <> "_")
 
 roundTo :: Int -> Double -> Double
 roundTo n x = fromIntegral (truncate $ x * 10 ^ n) / 10 ^ n
@@ -98,8 +103,9 @@ drawDebug
       activeBoosts = activeBoosts',
       boosts = boosts',
       offset = offset',
-      player = Player {playerY = playerY, hitBoxSize = playerSize}
+      player = Player {playerY = playerY, hitBoxSize = playerSize, name = name}
     } =
+      translated 5 5 (maybeDrawName name ) <>
     colored red (rectangle screenWidth screenHeight)
       <> colored blue (solidCircle 0.1)
       <> translated 0 (-7) (drawNumber $ roundTo 3 speed')

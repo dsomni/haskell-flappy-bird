@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import GHC.IO.Unsafe (unsafePerformIO)
 import Game.Constants
 import Game.Data
+import Game.Data (World (leaderBoard), WorldState (NameInput))
 import Game.Draw
 import Game.Utils
 import Network.HTTP.Simple
@@ -24,11 +25,15 @@ run = newGame
 
 getLeaderBoard :: IO [(T.Text, Int)]
 getLeaderBoard = do
-  maybeLeaderBoardHost <- lookupEnv "LEADER_BOARD_HOST"
-  let leaderBoardHost = fromMaybe defaultLeaderBoardHost maybeLeaderBoardHost
-  response <- httpJSON (fromString (leaderBoardHost <> "/results"))
+  host <- leaderBoardHost
+  response <- httpJSON (fromString (host <> "/results"))
   let responseBody' = getResponseBody response :: [Record]
   pure $ map (\p -> (playerName p, playerScore p)) responseBody'
+
+leaderBoardHost = do
+  maybeLeaderBoardHost <- lookupEnv "LEADER_BOARD_HOST"
+  let leaderBoardHost = fromMaybe defaultLeaderBoardHost maybeLeaderBoardHost
+  return leaderBoardHost
   where
     defaultLeaderBoardHost = "http://localhost:8080"
 
@@ -40,7 +45,10 @@ instance FromJSON Record where
     Record <$> obj .: "name" <*> obj .: "score"
 
 sendResultToLeaderBoard :: (T.Text, Int) -> IO (T.Text, Int)
-sendResultToLeaderBoard = return
+sendResultToLeaderBoard tuple@(name, score) = do
+  host <- leaderBoardHost
+  _ <- httpBS (fromString (host <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score))
+  return tuple
 
 getSpawnFieldOutside :: Double -> Gate -> Gate -> (Double, Double, Double, Double)
 getSpawnFieldOutside
@@ -175,8 +183,8 @@ sampleGates gen =
     gateTypes = map chooseType probabilities
 
 -- generateWorld ws debug g = World (-2) gates boosts [] 0 startWorldSpeed startWorldSpeed (Player 0 0 1 0) 0 ws gen False False debug Pushing False
-generateWorld :: [(T.Text, Int)] -> WorldState -> Bool -> StdGen -> World
-generateWorld leaderBoard ws debug g =
+generateWorld :: Maybe T.Text -> [(T.Text, Int)] -> WorldState -> Bool -> StdGen -> World
+generateWorld playerName leaderBoard ws debug g =
   World
     { time = -2,
       gates = gates,
@@ -191,7 +199,7 @@ generateWorld leaderBoard ws debug g =
             playerY = 0,
             hitBoxSize = 1,
             acceleration = 0,
-            name = Nothing
+            name = playerName
           },
       score = 0,
       state = ws,
@@ -212,13 +220,14 @@ newGame :: IO ()
 newGame = do
   gen <- newStdGen
   leaderBoard <- getLeaderBoard
-  activityOf (generateWorld leaderBoard Idle False gen) handleEvent drawWorld
+  activityOf (generateWorld Nothing leaderBoard Idle False gen) handleEvent drawWorld
 
 handleEvent :: Event -> World -> World
 handleEvent (KeyPress "D") world@World {debugMode = oldDebug} = world {debugMode = not oldDebug}
 handleEvent e world@World {state = Progress} = handleProgressEvent e world
 handleEvent e world@World {state = Fail} = handleFailEvent e world
 handleEvent e world@World {state = Idle} = handleIdleEvent e world
+handleEvent e world@World {state = NameInput} = handleNameInputEvent e world
 
 handlePushingAction :: Event -> World -> World
 handlePushingAction (KeyPress " ") world@World {..}
@@ -249,21 +258,25 @@ handleProgressEvent e world@World {gameType = Pushing} = handlePushingAction e w
 handleProgressEvent e world@World {gameType = Holding} = handleAccelerationAction e world
 
 handleFailEvent :: Event -> World -> World
+handleFailEvent e world@World {state = NameInput} = handleNameInputEvent e world
 handleFailEvent _ world@World {player = Player {name = Nothing}} = world {state = NameInput}
-handleFailEvent e world@World {state = NameInput} = handleNameEnterEvent e world
 handleFailEvent (TimePassing dt) world = updateWorld dt world
-handleFailEvent (KeyPress " ") World {generator = g, debugMode = d, ..} = generateWorld leaderBoard Progress d g
+handleFailEvent (KeyPress " ") World {generator = g, debugMode = d, ..} = generateWorld (name player) leaderBoard Progress d g
 handleFailEvent _ world = world
 
 handleIdleEvent :: Event -> World -> World
 handleIdleEvent (KeyPress " ") world = world {state = Progress}
 handleIdleEvent _ world = world
 
-handleNameEnterEvent :: Event -> World -> World
-handleNameEnterEvent (KeyPress "Enter") world = world {state = Fail}
-handleNameEnterEvent (KeyPress char) world@World {player = player@Player {name = name}}
-  | T.length char == 1 = world {player = player {name = name}}
+handleNameInputEvent :: Event -> World -> World
+handleNameInputEvent (KeyPress "Enter") world = world {state = Fail}
+handleNameInputEvent (KeyPress char) world@World {player = player}
+  | T.length char == 1 = world {player = updateName char player}
   | otherwise = world
+  where
+    updateName newName player@Player {name = Nothing} = player {name = Just newName}
+    updateName newChar player@Player {name = (Just name)} = player {name = Just (name <> newChar)}
+handleNameInputEvent _ world = world
 
 applyBoosts :: World -> World
 applyBoosts world@World {activeBoosts = []} = world
