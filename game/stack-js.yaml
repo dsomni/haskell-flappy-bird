@@ -17,6 +17,9 @@ extra-deps:
 - codeworld-api-0.3.1
 - ghcjs-dom-0.8.0.0
 - ghcjs-dom-jsffi-0.8.0.0
+- ghcjs-fetch-0.1.0.0
+- aeson-1.1.0.0
+- ghcjs-base-0.2.0.0
 
 setup-info:
   ghcjs:

@@ -13,12 +13,14 @@ import qualified Data.Text as T
 import GHC.IO.Unsafe (unsafePerformIO)
 import Game.Constants
 import Game.Data
-import Game.Data (World (leaderBoard), WorldState (NameInput))
 import Game.Draw
 import Game.Utils
-import Network.HTTP.Simple
+import GHCJS.Fetch
 import System.Environment (lookupEnv)
 import System.Random
+import qualified Data.JSString as JSS
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 
 run :: IO ()
 run = newGame
@@ -26,14 +28,15 @@ run = newGame
 getLeaderBoard :: IO [(T.Text, Int)]
 getLeaderBoard = do
   host <- leaderBoardHost
-  response <- httpJSON (fromString (host <> "/results"))
-  let responseBody' = getResponseBody response :: [Record]
-  pure $ map (\p -> (playerName p, playerScore p)) responseBody'
+  response <- fetch (Request (fromString (host <> "/results")) defaultRequestOptions)
+  jsonRecord <- responseText response
+  let records = fromMaybe [] (decode (TL.encodeUtf8 (TL.pack (JSS.unpack jsonRecord))))
+  pure $ map (\p -> (playerName p, playerScore p)) records
 
+leaderBoardHost :: IO String
 leaderBoardHost = do
   maybeLeaderBoardHost <- lookupEnv "LEADER_BOARD_HOST"
-  let leaderBoardHost = fromMaybe defaultLeaderBoardHost maybeLeaderBoardHost
-  return leaderBoardHost
+  return (fromMaybe defaultLeaderBoardHost maybeLeaderBoardHost)
   where
     defaultLeaderBoardHost = "http://localhost:8080"
 
@@ -47,7 +50,8 @@ instance FromJSON Record where
 sendResultToLeaderBoard :: (T.Text, Int) -> IO (T.Text, Int)
 sendResultToLeaderBoard tuple@(name, score) = do
   host <- leaderBoardHost
-  _ <- httpLBS (fromString (host <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score))
+  response <- fetch (Request (fromString (host <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score)) defaultRequestOptions)
+  _ <- responseText response
   return tuple
 
 getSpawnFieldOutside :: Double -> Gate -> Gate -> (Double, Double, Double, Double)

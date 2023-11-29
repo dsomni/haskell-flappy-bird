@@ -23,8 +23,10 @@ dependencies:
 - codeworld-api
 - text
 - random
-- http-conduit
+- ghcjs-fetch
 - aeson
+- bytestring
+- ghcjs-base
 
 library:
   source-dirs: src
