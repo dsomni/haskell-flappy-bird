@@ -1,16 +1,16 @@
-name: Client Docker Image CI
+name: Leader Board Docker Image CI
 
 on:
   push:
     branches:
       - main
     paths:
-      - "game/**"
+      - "leaderboard/**"
   pull_request:
     branches:
       - main
     paths:
-      - "game/**"
+      - "leaderboard/**"
 
 jobs:
   build:
@@ -30,7 +30,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v2
         with:
-          context: ./game
-          file: ./game/Dockerfile
+          context: ./leaderboard
+          file: ./leaderboard/Dockerfile
           push: true
-          tags: sl1depengwyn/haskell-flappy-bird-client:latest
+          tags: sl1depengwyn/haskell-flappy-bird-leaderboard:latest

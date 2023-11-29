@@ -8,6 +8,7 @@ import Database.HDBC
 import Database.HDBC.PostgreSQL
 import Web.Scotty qualified as S
 import System.Environment (lookupEnv)
+import Data.Maybe (fromMaybe)
 
 -- Function to insert data into the database
 insertData :: Connection -> Int -> String -> IO [[SqlValue]]
@@ -43,10 +44,7 @@ app conn = do
 runApp :: IO ()
 runApp = do
   maybeConnectionString <- lookupEnv "DATABASE_CONNECTION_STRING"
-  connectionString <- case maybeConnectionString of
-        Nothing -> putStrLn ("DATABASE_CONNECTION_STRING is not set. Using default value: " <> defaultConnectionString) >> defaultConnectionString
-        Just cs -> cs
-
+  let connectionString = fromMaybe defaultConnectionString maybeConnectionString 
   conn <- initializeDB connectionString
   _ <- createTable conn -- Call the createTable function during initialization
   S.scotty 8080 (app conn)
