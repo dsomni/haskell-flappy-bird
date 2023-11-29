@@ -9,7 +9,7 @@ COPY . /build/
 
 RUN stack build
 
-RUN cp $(stack path --stack-yaml stack-js.yaml --local-install-root)/bin/leaderboard \
+RUN cp $(stack path --local-install-root)/bin/leaderboard \
     /sbin/
 
 

@@ -9,7 +9,7 @@ import Data.List
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import Data.String (fromString)
-import Data.Text qualified as T
+import qualified Data.Text as T
 import GHC.IO.Unsafe (unsafePerformIO)
 import Game.Constants
 import Game.Data

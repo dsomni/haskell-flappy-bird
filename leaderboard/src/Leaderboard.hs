@@ -37,6 +37,7 @@ app conn = do
     score <- S.param "score" :: S.ActionM Int
     name <- S.param "name" :: S.ActionM String
     _ <- liftIO $ insertData conn score name
+    commit conn
     S.text "Data stored successfully!"
 
   S.get "/results" $ do
