@@ -40,6 +40,7 @@ library
     , HDBC-postgresql >=2.5.0.1
     , aeson
     , base >=4.7 && <5
+    , bytestring
     , random
     , scotty
     , text
@@ -62,6 +63,7 @@ executable leaderboard
     , HDBC-postgresql >=2.5.0.1
     , aeson
     , base >=4.7 && <5
+    , bytestring
     , leaderboard
     , random
     , scotty
@@ -86,6 +88,7 @@ test-suite doctests
     , QuickCheck
     , aeson
     , base
+    , bytestring
     , doctest
     , random
     , scotty
@@ -113,6 +116,7 @@ test-suite spec
     , HDBC-postgresql >=2.5.0.1
     , aeson
     , base >=4.7 && <5
+    , bytestring
     , haskell-flappy-bird
     , hspec
     , random

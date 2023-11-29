@@ -12,4 +12,4 @@ Flappy Bird game clone written in Haskell.
 
 ## Quick start
 
-`raise NotImplementedError()`
+`docker compose up`

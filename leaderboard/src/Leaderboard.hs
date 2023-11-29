@@ -11,11 +11,12 @@ import Database.HDBC
 import Database.HDBC.PostgreSQL
 import System.Environment (lookupEnv)
 import Web.Scotty qualified as S
+import qualified Data.ByteString.Char8 as C
 
 -- Function to insert data into the database
 insertData :: Connection -> Int -> String -> IO [[SqlValue]]
 insertData conn intParam stringParam =
-  quickQuery conn "INSERT INTO leaderboard (score, name) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET score = EXCLUDED.score" [nToSql intParam, toSql stringParam]
+  quickQuery conn "INSERT INTO leaderboard (score, name) VALUES (?, ?) ON CONFLICT (name) DO UPDATE SET score = GREATEST(EXCLUDED.score, leaderboard.score)" [nToSql intParam, toSql stringParam]
 
 getData :: Connection -> IO [[SqlValue]]
 getData conn =
@@ -27,7 +28,7 @@ initializeDB = connectPostgreSQL
 
 createTable :: Connection -> IO Integer
 createTable conn = do
-  let query = "CREATE TABLE IF NOT EXISTS leaderboard (score INTEGER, name TEXT)"
+  let query = "CREATE TABLE IF NOT EXISTS leaderboard (score INTEGER, name TEXT PRIMARY KEY)"
   run conn query []
 
 app :: Connection -> S.ScottyM ()
@@ -59,6 +60,6 @@ runApp = do
 convert :: [[SqlValue]] -> [Value]
 convert = map converter
   where
-    converter [SqlInt64 score, SqlByteString name] = object ["name" .= show name, "score" .= score]
-    converter [SqlInteger score, SqlByteString name] = object ["name" .= show name, "score" .= score]
+    converter [SqlInt64 score, SqlByteString name] = object ["name" .= C.unpack name, "score" .= score]
+    converter [SqlInteger score, SqlByteString name] = object ["name" .= C.unpack name, "score" .= score]
     converter _ = object []

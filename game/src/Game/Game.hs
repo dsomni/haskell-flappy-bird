@@ -258,18 +258,18 @@ handleProgressEvent e world@World {gameType = Pushing} = handlePushingAction e w
 handleProgressEvent e world@World {gameType = Holding} = handleAccelerationAction e world
 
 handleFailEvent :: Event -> World -> World
-handleFailEvent e world@World {state = NameInput} = handleNameInputEvent e world
-handleFailEvent _ world@World {player = Player {name = Nothing}} = world {state = NameInput}
 handleFailEvent (TimePassing dt) world = updateWorld dt world
 handleFailEvent (KeyPress " ") World {generator = g, debugMode = d, ..} = generateWorld (name player) leaderBoard Progress d g
 handleFailEvent _ world = world
 
 handleIdleEvent :: Event -> World -> World
+handleIdleEvent e world@World {state = NameInput} = handleNameInputEvent e world
+handleIdleEvent _ world@World {player = Player {name = Nothing}} = world {state = NameInput}
 handleIdleEvent (KeyPress " ") world = world {state = Progress}
 handleIdleEvent _ world = world
 
 handleNameInputEvent :: Event -> World -> World
-handleNameInputEvent (KeyPress "Enter") world = world {state = Fail}
+handleNameInputEvent (KeyPress "Enter") world = world {state = Idle}
 handleNameInputEvent (KeyPress char) world@World {player = player}
   | T.length char == 1 = world {player = updateName char player}
   | otherwise = world
@@ -325,7 +325,11 @@ updateWorld dt world@World {..} =
     (newState, newLeaderBoard) = if isFailed newWorld then (Fail, updateLeaderBoard leaderBoard) else (Progress, leaderBoard)
     updateLeaderBoard lb = case name player of
       Nothing -> lb
-      Just playerName -> take leaderBoardSize (sortBy (comparing snd) (unsafePerformIO (sendResultToLeaderBoard (playerName, score)) : filter ((/= playerName) . fst) lb))
+      Just playerName -> take leaderBoardSize (sortBy (flip (comparing snd)) (takeMax (unsafePerformIO (sendResultToLeaderBoard (playerName, score))) lb : filter ((/= playerName) . fst) lb))
+        where
+          takeMax (name, score) lb = case find (\x -> fst x == name) lb of
+            Nothing -> (name, score)
+            Just (nameFound, scoreFound) -> (name, max scoreFound score)
     newPlayer = case newState of
       Fail -> updatePlayer False Pushing dt player {velocity = pushAcceleration / 2}
       _ -> updatePlayer inverseGravity gameType dt player

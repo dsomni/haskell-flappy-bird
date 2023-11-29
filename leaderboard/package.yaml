@@ -30,6 +30,7 @@ dependencies:
 - wai
 - HDBC
 - HDBC-postgresql >= 2.5.0.1
+- bytestring
 
 
 default-extensions:
