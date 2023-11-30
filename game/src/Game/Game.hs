@@ -5,40 +5,36 @@ module Game.Game where
 
 import CodeWorld
 import Data.Aeson
+import qualified Data.JSString as JSS
 import Data.List
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
 import Data.String (fromString)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 import GHC.IO.Unsafe (unsafePerformIO)
+import GHCJS.Fetch
 import Game.Constants
 import Game.Data
 import Game.Draw
 import Game.Utils
-import GHCJS.Fetch
 import System.Environment (lookupEnv)
 import System.Random
-import qualified Data.JSString as JSS
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.Encoding as TL
 
 run :: IO ()
 run = newGame
 
 getLeaderBoard :: IO [(T.Text, Int)]
 getLeaderBoard = do
-  host <- leaderBoardHost
-  response <- fetch (Request (fromString (host <> "/results")) defaultRequestOptions { reqOptMode = NoCors })
+  response <- fetch (Request (fromString (leaderBoardHost <> "/results")) defaultRequestOptions {reqOptMode = Cors})
   jsonRecord <- responseText response
-  let records = fromMaybe [] (decode (TL.encodeUtf8 (TL.pack (JSS.unpack jsonRecord))))
+  print jsonRecord
+  let records = fromMaybe [] (decode (fromString (JSS.unpack' jsonRecord)))
   pure $ map (\p -> (playerName p, playerScore p)) records
 
-leaderBoardHost :: IO String
-leaderBoardHost = do
-  maybeLeaderBoardHost <- lookupEnv "LEADER_BOARD_HOST"
-  return (fromMaybe defaultLeaderBoardHost maybeLeaderBoardHost)
-  where
-    defaultLeaderBoardHost = "http://localhost:8080"
+leaderBoardHost :: String
+leaderBoardHost = "http://localhost:8080"
 
 data Record = Record {playerName :: T.Text, playerScore :: Int}
   deriving (Show)
@@ -49,8 +45,7 @@ instance FromJSON Record where
 
 sendResultToLeaderBoard :: (T.Text, Int) -> IO (T.Text, Int)
 sendResultToLeaderBoard tuple@(name, score) = do
-  host <- leaderBoardHost
-  response <- fetch (Request (fromString (host <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score)) defaultRequestOptions { reqOptMode = NoCors })
+  response <- fetch (Request (fromString (leaderBoardHost <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score)) defaultRequestOptions {reqOptMode = NoCors})
   _ <- responseText response
   return tuple
 
@@ -329,11 +324,13 @@ updateWorld dt world@World {..} =
     (newState, newLeaderBoard) = if isFailed newWorld then (Fail, updateLeaderBoard leaderBoard) else (Progress, leaderBoard)
     updateLeaderBoard lb = case name player of
       Nothing -> lb
-      Just playerName -> take leaderBoardSize (sortBy (flip (comparing snd)) (takeMax (unsafePerformIO (sendResultToLeaderBoard (playerName, score))) lb : filter ((/= playerName) . fst) lb))
+      Just playerName -> take leaderBoardSize (sortBy (flip (comparing snd)) (updatedRecord : filter ((/= playerName) . fst) lb))
         where
-          takeMax (name, score) lb = case find (\x -> fst x == name) lb of
-            Nothing -> (name, score)
-            Just (nameFound, scoreFound) -> (name, max scoreFound score)
+          record = unsafePerformIO (sendResultToLeaderBoard (playerName, score))
+          updatedRecord = case find (\x -> fst x == fst record) lb of
+            Nothing -> record
+            Just (nameFound, scoreFound) -> (nameFound, max scoreFound (snd record))
+
     newPlayer = case newState of
       Fail -> updatePlayer False Pushing dt player {velocity = pushAcceleration / 2}
       _ -> updatePlayer inverseGravity gameType dt player
