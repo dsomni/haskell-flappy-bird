@@ -1,5 +1,5 @@
-resolver: lts-7.19
-compiler: ghcjs-0.2.1.9007019_ghc-8.0.1
+resolver: lts-8.11
+compiler: ghcjs-0.2.1.9008011_ghc-8.0.2
 compiler-check: match-exact
 
 packages:
@@ -18,12 +18,12 @@ extra-deps:
 - ghcjs-dom-0.8.0.0
 - ghcjs-dom-jsffi-0.8.0.0
 - ghcjs-fetch-0.1.0.0
-- aeson-1.1.0.0
+- aeson-1.2.0.0
 - ghcjs-base-0.2.0.0
 
 setup-info:
   ghcjs:
     source:
-      ghcjs-0.2.1.9007019_ghc-8.0.1:
-        url: http://ghcjs.tolysz.org/ghc-8.0-2017-02-05-lts-7.19-9007019.tar.gz
-        sha1: d2cfc25f9cda32a25a87d9af68891b2186ee52f9
+      ghcjs-0.2.1.9008011_ghc-8.0.2:
+        url: https://github.com/matchwood/ghcjs-stack-dist/raw/master/ghcjs-0.2.1.9008011.tar.gz
+        sha1: a72a5181124baf64bcd0e68a8726e65914473b3b
