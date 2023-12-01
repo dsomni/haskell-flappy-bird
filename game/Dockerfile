@@ -7,8 +7,8 @@ RUN cp crtbeginS.o crtbeginT.o
 COPY ./ /work
 WORKDIR /work
 
-ARG LEADER_BOARD_HOST
 ENV LEADER_BOARD_HOST="http://localhost:8080"
+ARG LEADER_BOARD_HOST
 
 RUN sed -i -e "s|http://localhost:8080|${LEADER_BOARD_HOST}|g" src/Game/Game.hs
 
