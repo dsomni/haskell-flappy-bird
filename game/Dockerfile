@@ -7,11 +7,6 @@ RUN cp crtbeginS.o crtbeginT.o
 COPY ./ /work
 WORKDIR /work
 
-ENV LEADER_BOARD_HOST="http://localhost:8080"
-ARG LEADER_BOARD_HOST
-
-RUN sed -i -e "s|http://localhost:8080|${LEADER_BOARD_HOST}|g" src/Game/Game.hs
-
 RUN apt update
 RUN apt install -y nodejs nodejs-legacy
 

@@ -33,7 +33,6 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
-    , bytestring
     , codeworld-api
     , ghcjs-base
     , ghcjs-fetch
@@ -51,7 +50,6 @@ executable haskell-flappy-bird
   build-depends:
       aeson
     , base >=4.7 && <5
-    , bytestring
     , codeworld-api
     , ghcjs-base
     , ghcjs-fetch
@@ -71,7 +69,6 @@ test-suite doctests
     , QuickCheck
     , aeson
     , base
-    , bytestring
     , codeworld-api
     , doctest
     , ghcjs-base
@@ -93,7 +90,6 @@ test-suite spec
   build-depends:
       aeson
     , base >=4.7 && <5
-    , bytestring
     , codeworld-api
     , ghcjs-base
     , ghcjs-fetch

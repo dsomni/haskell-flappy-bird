@@ -4,8 +4,6 @@ services:
     image: sl1depengwyn/haskell-flappy-bird-client:latest
     ports:
       - "80:80"
-    environment:
-      LEADER_BOARD_HOST: "http://leaderboard:8080"
     depends_on:
       - leaderboard
 

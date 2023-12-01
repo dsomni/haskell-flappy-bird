@@ -6,6 +6,7 @@ module Game.Game where
 import CodeWorld
 import Data.Aeson
 import qualified Data.JSString as JSS
+import Data.JSString.Text
 import Data.List
 import Data.Maybe (fromMaybe)
 import Data.Ord (comparing)
@@ -19,22 +20,36 @@ import Game.Constants
 import Game.Data
 import Game.Draw
 import Game.Utils
+import JavaScript.Web.Location
 import System.Environment (lookupEnv)
 import System.Random
 
 run :: IO ()
-run = newGame
+run = do
+  gen <- newStdGen
+  leaderBoard <- getLeaderBoard
+  newGame gen leaderBoard
 
 getLeaderBoard :: IO [(T.Text, Int)]
 getLeaderBoard = do
-  response <- fetch (Request (fromString (leaderBoardHost <> "/results")) defaultRequestOptions {reqOptMode = Cors})
+  host <- leaderBoardHost
+  response <- fetch (Request (fromString (host <> "/results")) defaultRequestOptions {reqOptMode = Cors})
   jsonRecord <- responseText response
-  print jsonRecord
   let records = fromMaybe [] (decode (fromString (JSS.unpack' jsonRecord)))
   pure $ map (\p -> (playerName p, playerScore p)) records
 
-leaderBoardHost :: String
-leaderBoardHost = "http://localhost:8080"
+leaderBoardHost :: IO String
+leaderBoardHost = do
+  location <- getWindowLocation
+  hrefJS <- getHref location
+  searchJS <- getSearch location
+  let search = textFromJSString searchJS
+      href = textFromJSString hrefJS
+      host = case ("?leader_board_host=" `T.stripPrefix` search, search `T.stripSuffix` href) of
+        (Just host, _) -> T.unpack host
+        (_, Just host) -> T.unpack host
+        _ -> "http://localhost:8080"
+  return host
 
 data Record = Record {playerName :: T.Text, playerScore :: Int}
   deriving (Show)
@@ -45,7 +60,8 @@ instance FromJSON Record where
 
 sendResultToLeaderBoard :: (T.Text, Int) -> IO (T.Text, Int)
 sendResultToLeaderBoard tuple@(name, score) = do
-  response <- fetch (Request (fromString (leaderBoardHost <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score)) defaultRequestOptions {reqOptMode = NoCors})
+  host <- leaderBoardHost
+  response <- fetch (Request (fromString (host <> "/store-data?name=" <> T.unpack name <> "&score=" <> show score)) defaultRequestOptions {reqOptMode = NoCors})
   _ <- responseText response
   return tuple
 
@@ -215,10 +231,8 @@ generateWorld playerName leaderBoard ws debug g =
     gates = sampleGates gen
     boosts = sampleBoosts gen gates
 
-newGame :: IO ()
-newGame = do
-  gen <- newStdGen
-  leaderBoard <- getLeaderBoard
+newGame :: StdGen -> [(T.Text, Int)] -> IO ()
+newGame gen leaderBoard = do
   activityOf (generateWorld Nothing leaderBoard Idle False gen) handleEvent drawWorld
 
 handleEvent :: Event -> World -> World
