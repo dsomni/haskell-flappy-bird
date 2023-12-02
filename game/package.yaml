@@ -25,7 +25,6 @@ dependencies:
 - random
 - ghcjs-fetch
 - aeson
-- bytestring
 - ghcjs-base
 
 library:

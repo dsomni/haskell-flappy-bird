@@ -1,4 +1,4 @@
-FROM ytaka23/stack-ghcjs:lts-7.19 AS builder
+FROM fpco/stack-build:lts-8.11 AS builder
 
 WORKDIR /usr/lib/gcc/x86_64-linux-gnu/5.4.0
 RUN cp crtbeginT.o crtbeginT.o.orig
@@ -7,11 +7,10 @@ RUN cp crtbeginS.o crtbeginT.o
 COPY ./ /work
 WORKDIR /work
 
-ARG LEADER_BOARD_HOST
-ENV LEADER_BOARD_HOST="http://localhost:8080"
+RUN apt update
+RUN apt install -y nodejs nodejs-legacy
 
-RUN sed -i -e 's|http://localhost:8080|${LEADER_BOARD_HOST}|g' src/Game/Game.hs
-
+RUN stack setup --stack-yaml stack-js.yaml
 RUN stack build --stack-yaml stack-js.yaml
 RUN cp -r $(stack path --stack-yaml stack-js.yaml --local-install-root)/bin/haskell-flappy-bird.jsexe \
     /sbin/

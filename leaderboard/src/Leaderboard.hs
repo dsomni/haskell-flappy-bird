@@ -12,6 +12,8 @@ import Database.HDBC.PostgreSQL
 import System.Environment (lookupEnv)
 import Web.Scotty qualified as S
 import qualified Data.ByteString.Char8 as C
+import Network.Wai.Middleware.Cors
+
 
 -- Function to insert data into the database
 insertData :: Connection -> Int -> String -> IO [[SqlValue]]
@@ -33,6 +35,7 @@ createTable conn = do
 
 app :: Connection -> S.ScottyM ()
 app conn = do
+  S.middleware simpleCors
   -- Endpoint to handle storing data into the database
   S.get "/store-data" $ do
     score <- S.param "score" :: S.ActionM Int

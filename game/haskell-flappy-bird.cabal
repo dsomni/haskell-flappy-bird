@@ -34,6 +34,7 @@ library
       aeson
     , base >=4.7 && <5
     , codeworld-api
+    , ghcjs-base
     , ghcjs-fetch
     , random
     , text
@@ -50,6 +51,7 @@ executable haskell-flappy-bird
       aeson
     , base >=4.7 && <5
     , codeworld-api
+    , ghcjs-base
     , ghcjs-fetch
     , haskell-flappy-bird
     , random
@@ -69,6 +71,7 @@ test-suite doctests
     , base
     , codeworld-api
     , doctest
+    , ghcjs-base
     , ghcjs-fetch
     , random
     , template-haskell
@@ -88,6 +91,7 @@ test-suite spec
       aeson
     , base >=4.7 && <5
     , codeworld-api
+    , ghcjs-base
     , ghcjs-fetch
     , haskell-flappy-bird
     , hspec
